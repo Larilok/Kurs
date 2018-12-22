@@ -1,8 +1,10 @@
 //TODO ipv6 support
-//TODO udp support
+//TODO udp support - somewhat done - still very unreliable
 //TODO rewrite in OOP
 //TODO add error classes
 //TODO deal with promise.reject on wrong method in scanPortRange
+//TODO fix udp breakdown on large port range
+//TODO fix refuse to exit on large port range
 
 'use strict';
 
@@ -16,9 +18,11 @@ console.log(process.argv);
 let scanPortUDP = (port, host, success, callback) => {
     const socket = dgram.createSocket('udp4');
     socket.bind(parseInt(port), host);
+    // console.log("HOST: " + host);
 
     socket.on('error', (err) => {
         // console.log(`socket error:\n${err.stack}`);
+        // console.log('err');
         socket.close();
         if(callback) callback('closed');
     });
@@ -136,7 +140,7 @@ let parseArgs = () => {
     let wantTcp = false;
     let wantUdp = false;
     //bad args or help request
-    if(isNaN(parseInt(process.argv[2])) || process.argv[2] === "help") showHelp();//insufficient or wrong args or help call
+    if(isNaN(parseInt(process.argv[2])) || process.argv[2] === "help") return showHelp();//insufficient or wrong args or help call
     //1st arg being dealt with
     if(process.argv.length === 2 || process.argv[2].indexOf('.') !== -1
         || process.argv[2] === 'tcp' || process.argv[2] === 'udp') {//no 1st arg or it is unrelated to ports
@@ -179,4 +183,5 @@ let parseArgs = () => {
     console.log(scanParameters);
     if(scanParameters.tcp) scanPortRange(scanParameters.ports, scanParameters.hosts, 'tcp');
     if(scanParameters.udp) scanPortRange(scanParameters.ports, scanParameters.hosts, 'udp');
+    // process.exit(0);
 }
