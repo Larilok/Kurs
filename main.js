@@ -1,34 +1,62 @@
+//TODO ipv6 support
+//TODO udp support
+//TODO rewrite in OOP
+//TODO add error classes
+//TODO deal with promise.reject on wrong method in scanPortRange
+
 'use strict';
 
 let net = require('net');
+let dgram = require('dgram');
 
 function log(...args) {return console.log(...args)}
 
 console.log(process.argv);
 
-let scanPort = function(port, host, success, callback) {
+let scanPortUDP = (port, host, success, callback) => {
+    const socket = dgram.createSocket('udp4');
+    socket.bind(parseInt(port), host);
+
+    socket.on('error', (err) => {
+        // console.log(`socket error:\n${err.stack}`);
+        socket.close();
+        if(callback) callback('closed');
+    });
+
+    socket.on('message', (msg, info) => {
+        console.log(`socket got: ${msg} from ${info.address}:${info.port}`);
+    });
+
+    socket.on('listening', () => {
+        // console.log(`server listening ${socket.address().address}:${socket.address().port}`);
+        success.push({port: socket.address().port, host: socket.address().address});
+        socket.close();
+        if(callback) callback('open');
+    });
+};
+
+let scanPort = (port, host, success, callback) => {
   let socket = net.createConnection({port: port, host: host});
 
   socket.on('error', err => {
       socket.end();
-      callback('closed');
-      // console.log(err);
+      if(callback) callback('closed');
   });
 
   socket.on('connect', () => {
-      // console.log(socket.remotePort);
-      // console.log(socket.localPort);
       success.push({port: socket.remotePort, host: socket.remoteAddress});
-      callback('open');
       socket.end();
+      if(callback) callback('open');
   });
 };
 
-let scanPortRange = function(ports, hosts) {
+let scanPortRange = (ports, hosts, method) => {
     let success = [];
     Promise.all(hosts.map(host => {
         return ports.map(port => {
-            return new Promise((resolve, reject) => scanPort(port, host, success, (arg) => resolve(arg)));
+            if(method === 'tcp') return new Promise((resolve, reject) => scanPort(port, host, success, (arg) => resolve(arg)));
+            else if(method === 'udp') return new Promise((resolve, reject) => scanPortUDP(port, host, success, (arg) => resolve(arg)));
+            else return new Promise.reject('Unknown method');
         });
     }).reduce((first, second) => first.concat(second), []))
         .then(() => {
@@ -130,7 +158,7 @@ let parseArgs = () => {
         hosts = parseHosts(process.argv[3]);
     }
     //3rd arg being dealt with
-    if(process.argv.length === 4 && wantUdp === false) wantTcp = true;//no 3rd arg and udp not  wanted
+    if(process.argv.length <= 4 && wantUdp === false) wantTcp = true;//no 3rd arg and udp not  wanted
     else {
         if(process.argv[4] === 'tcp') wantTcp = true;//3rd arg is tcp request
         else if(process.argv[4] === 'udp') wantUdp = true;//3rd arg is udp request
@@ -148,5 +176,7 @@ let parseArgs = () => {
 
 /*Main()*/{
     let scanParameters = parseArgs();
-    scanPortRange(scanParameters['ports'], scanParameters['hosts']);
+    console.log(scanParameters);
+    if(scanParameters.tcp) scanPortRange(scanParameters.ports, scanParameters.hosts, 'tcp');
+    if(scanParameters.udp) scanPortRange(scanParameters.ports, scanParameters.hosts, 'udp');
 }
