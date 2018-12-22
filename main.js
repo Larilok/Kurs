@@ -79,7 +79,7 @@ let parsePorts = ports => {
         return ports.split(',').map(port => {
             if (port.indexOf('-') !== -1) {
                 let range = port.split('-');
-                if(range[0] === "" || range[1] === "") throw new Error('Unbounded port range');
+                checkPortIntervalValidity(range);
                 let length = range[1] - range[0] + 1;
                 return [...Array(length).keys()].map(x => (x + parseInt(range[0])).toString());
             }
@@ -89,13 +89,12 @@ let parsePorts = ports => {
 };
 
 let parseHosts = hosts => {
-    hosts = replaceColons(hosts);
     if (hosts.indexOf('-') !== -1) {
         return hosts.split(',').map(port => {
             if (port.indexOf('-') !== -1) {
                 let range = port.split('-');
                 range[1] = range[0].slice(0, range[0].lastIndexOf('.')+1) + range[1];
-                checkIntervalValidity(range);
+                checkHostIntervalValidity(range);
                 let length = range[1].slice(range[1].lastIndexOf('.')+1) - range[0].slice(range[0].lastIndexOf('.')+1) + 1;
                 return [...Array(length).keys()].map(x => range[0]
                     .slice(0, range[0].lastIndexOf('.')+1) +
@@ -112,7 +111,16 @@ let replaceColons = hosts => {
     } else return hosts;
 };
 
-let checkIntervalValidity = range => {
+let checkPortIntervalValidity = range => {
+    if(range[0] === "" || range[1] === "") throw new Error('Unbounded port range');
+    if(parseInt(range[0]) > parseInt(range[1])) {
+        let tempZero = range[0];
+        range[0] = range[1];
+        range[1] = tempZero;
+    }
+};
+
+let checkHostIntervalValidity = range => {
     if(range[0].lastIndexOf('.') === range[0].length - 1
         || range[1].lastIndexOf('.') === range[1].length - 1) throw new Error('Unbounded host range');
     if(parseInt(range[0].slice(range[0].lastIndexOf('.')+1)) > parseInt(range[1].slice(range[1].lastIndexOf('.')+1))) {
@@ -141,9 +149,12 @@ let parseArgs = () => {
     let wantUdp = false;
     //bad args or help request
     if(isNaN(parseInt(process.argv[2])) || process.argv[2] === "help") return showHelp();//insufficient or wrong args or help call
+    process.argv = process.argv.map(arg => replaceColons(arg));
+
     //1st arg being dealt with
     if(process.argv.length === 2 || process.argv[2].indexOf('.') !== -1
         || process.argv[2] === 'tcp' || process.argv[2] === 'udp') {//no 1st arg or it is unrelated to ports
+        console.log('first arg not ports');
         let fullPortRange = '0-65535';
         ports = parsePorts(fullPortRange);
         if(process.argv[2].indexOf('.') !== -1) hosts = parseHosts(process.argv[2]);//1st arg is hosts
@@ -152,21 +163,26 @@ let parseArgs = () => {
     } else {//first arg is not hosts or type specifier -> ports then
         ports = parsePorts(process.argv[2]);
     }
+
     //2nd arg being dealt with
     if(process.argv.length === 3 || process.argv[3] === 'tcp' || process.argv[3] === 'udp') {//no 2nd arg or i is unrelated to hosts
-        let localhost = '127.0.0.1';
-        hosts = parseHosts(localhost);
+        if(hosts === []) {
+            let localhost = '127.0.0.1';
+            hosts = parseHosts(localhost);
+        }
         if(process.argv[3] === 'tcp') wantTcp = true;//2nd arg is tcp request
         else if(process.argv[3] === 'udp') wantUdp = true;//2nd arg is udp request
     } else {
         hosts = parseHosts(process.argv[3]);
     }
+
     //3rd arg being dealt with
     if(process.argv.length <= 4 && wantUdp === false) wantTcp = true;//no 3rd arg and udp not  wanted
     else {
         if(process.argv[4] === 'tcp') wantTcp = true;//3rd arg is tcp request
         else if(process.argv[4] === 'udp') wantUdp = true;//3rd arg is udp request
     }
+    
     //4th arg being dealt with
     if(process.argv[5]=== 'tcp') wantTcp = true;//4th arg is tcp request
     else if(process.argv[5] === 'udp') wantUdp = true;//3rd arg is udp request
@@ -181,7 +197,7 @@ let parseArgs = () => {
 /*Main()*/{
     let scanParameters = parseArgs();
     console.log(scanParameters);
-    if(scanParameters.tcp) scanPortRange(scanParameters.ports, scanParameters.hosts, 'tcp');
-    if(scanParameters.udp) scanPortRange(scanParameters.ports, scanParameters.hosts, 'udp');
+    // if(scanParameters.tcp) scanPortRange(scanParameters.ports, scanParameters.hosts, 'tcp');
+    // if(scanParameters.udp) scanPortRange(scanParameters.ports, scanParameters.hosts, 'udp');
     // process.exit(0);
 }
