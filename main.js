@@ -10,15 +10,17 @@
 
 'use strict';
 
-let net = require('net');
-let dgram = require('dgram');
+const net = require('net');
+const dgram = require('dgram');
 
-let err = require('./errors.js');
+const err = require('./errors.js');
 
 console.log(process.argv);
 
-let scanPortUDP = (port, host, success, callback) => {
-    const socket = dgram.createSocket('udp4');
+const scanPortUDP = (port, host, family, success, callback) => {
+    let socket;
+    if(family === 4) socket = dgram.createSocket('udp4');
+    else if(family === 6) socket = dgram.createSocket('udp6');
     socket.bind(parseInt(port), host);
     // console.log("HOST: " + host);
 
@@ -36,15 +38,15 @@ let scanPortUDP = (port, host, success, callback) => {
 
     socket.on('listening', () => {
         // console.log(`server listening ${socket.address().address}:${socket.address().port}`);
-        success.push({port: socket.address().port, host: socket.address().address});
+        success.push({port: socket.address().port, host: socket.address().address, family: 'ipv' + family});
         socket.unref();
         socket.close();
         if(callback) callback('open');
     });
 };
 
-let scanPort = (port, host, success, callback) => {
-  let socket = net.createConnection({port: port, host: host});
+const scanPort = (port, host, family, success, callback) => {
+  let socket = net.createConnection({port: port, host: host, family: family});
 
   socket.on('error', err => {
       socket.unref();
@@ -53,7 +55,7 @@ let scanPort = (port, host, success, callback) => {
   });
 
   socket.on('connect', () => {
-      success.push({port: socket.remotePort, host: socket.remoteAddress});
+      success.push({port: socket.remotePort, host: socket.remoteAddress, family: 'ipv' + family});
       socket.unref();
       socket.end();
       if(callback) callback('open');
@@ -61,12 +63,12 @@ let scanPort = (port, host, success, callback) => {
   });
 };
 
-let scanPortRange = (ports, hosts, method) => {
+const scanPortRange = (ports, hosts, method, family) => {
     let success = [];
     Promise.all(hosts.map(host => {
         return ports.map(port => {
-            if(method === 'tcp') return new Promise((resolve, reject) => scanPort(port, host, success, (arg) => resolve(arg)));
-            else if(method === 'udp') return new Promise((resolve, reject) => scanPortUDP(port, host, success, (arg) => resolve(arg)));
+            if(method === 'tcp') return new Promise((resolve, reject) => scanPort(port, host, family, success, (arg) => resolve(arg)));
+            else if(method === 'udp') return new Promise((resolve, reject) => scanPortUDP(port, host, family, success, (arg) => resolve(arg)));
             else return Promise.reject('Unknown method used');
         });
     }).reduce((first, second) => first.concat(second), []))
@@ -79,12 +81,12 @@ let scanPortRange = (ports, hosts, method) => {
         });
 };
 
-let showOpenGates = gates => {
+const showOpenGates = gates => {
   console.log('Scanning complete. Open ports:');
   console.log(gates);
 };
 
-let parsePorts = ports => {
+const parsePorts = ports => {
     if (ports.indexOf('-') !== -1) {
         return ports.split(',').map(port => {
             if (port.indexOf('-') !== -1) {
@@ -98,8 +100,11 @@ let parsePorts = ports => {
     } else return ports.split(',');
 };
 
-let parseHosts = hosts => {
+const parseHosts = hosts => {
     if(hosts.indexOf('.') === -1) throw new err.BadHostNotationError('Incorrect host notation', hosts);
+    hosts.split(',').map((host) => {
+        if(host.split('.').length !== 4) throw new err.BadHostNotationError('Incorrect host notation', hosts);
+    });
     if (hosts.indexOf('-') !== -1) {
         return hosts.split(',').map(port => {
             if (port.indexOf('-') !== -1) {
@@ -116,13 +121,13 @@ let parseHosts = hosts => {
     } else return hosts.split(',');
 };
 
-let replaceColons = hosts => {
+const replaceColons = hosts => {
     if(hosts.indexOf(':') !== -1) {
         return hosts.split(':').join('.');
     } else return hosts;
 };
 
-let checkPortRangeValidity = range => {
+const checkPortRangeValidity = range => {
     if(range[0] === "" || range[1] === "") throw new err.RangeError('Unbounded port range', range);
     if(parseInt(range[0]) > parseInt(range[1])) {
         let tempZero = range[0];
@@ -131,7 +136,7 @@ let checkPortRangeValidity = range => {
     }
 };
 
-let checkHostRangeValidity = range => {
+const checkHostRangeValidity = range => {
     if(range[0].lastIndexOf('.') === range[0].length - 1
         || range[1].lastIndexOf('.') === range[1].length - 1) throw new err.RangeError('Unbounded host range', range);
     if(parseInt(range[0].slice(range[0].lastIndexOf('.')+1)) > parseInt(range[1].slice(range[1].lastIndexOf('.')+1))) {
@@ -141,7 +146,7 @@ let checkHostRangeValidity = range => {
     }
 };
 
-let showHelp = () => {
+const showHelp = () => {
     console.log(`Port scanner help:
         Use this tool to check for open ports on one or more TCP/UDP host
         Use:
@@ -158,7 +163,7 @@ let showHelp = () => {
         `);
 };
 
-let parseArgsOld = () => {
+const parseArgsOld = () => {
     let ports = [];
     let hosts = [];
     let wantTcp = false;
@@ -219,7 +224,7 @@ let parseArgsOld = () => {
     };
 };
 
-let parseArgs = () => {
+const parseArgs = () => {
     let ports = [];
     let hosts = [];
     let wantTcp = false;
@@ -616,9 +621,15 @@ let parseArgs = () => {
 };
 
 /*Main()*/{
-    let scanParameters = parseArgs();
+    const scanParameters = parseArgs();
     console.log(scanParameters);
-    if(scanParameters.tcp) scanPortRange(scanParameters.ports, scanParameters.hosts, 'tcp');
-    if(scanParameters.udp) scanPortRange(scanParameters.ports, scanParameters.hosts, 'udp');
+    if(scanParameters.tcp) {
+        if(scanParameters.ipv4) scanPortRange(scanParameters.ports, scanParameters.hosts, 'tcp', 4);
+        if(scanParameters.ipv6) scanPortRange(scanParameters.ports, scanParameters.hosts, 'tcp', 6);
+    }
+    if(scanParameters.udp) {
+        if(scanParameters.ipv4) scanPortRange(scanParameters.ports, scanParameters.hosts, 'udp', 4);
+        if(scanParameters.ipv6) scanPortRange(scanParameters.ports, scanParameters.hosts, 'udp', 6);
+    }
     // process.exit(0);
 }
