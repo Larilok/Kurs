@@ -24,17 +24,22 @@ const scanPortUDP = (port, host, family, success, callback) => {
 
   socket.bind(parseInt(port), host)
   // socket.bind(80, '0.0.0.0');
-  // socket.send('my packet',parseInt(port), host, (err,bytes) => {
-  //   console.log(err,"DAMMMMITTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT",bytes);
-  //   socket.close();
-  // });
+    try {
+        socket.send('my packet', parseInt(port), host, (err, bytes) => {
+            console.log(err, "DAMMMMITTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT", bytes);
+            socket.close();
+        });
+    } catch (e) {
+      console.warn(e);
+    }
 
   socket.on('error', (err) => {
       //console.log(`socket error:\n${err.stack}`);
-      // console.log(err);
+      console.log("called error");
+      console.log(err);
       success.push({port: err.port, host: err.address, family: 'ipv' + family});
       socket.unref();
-      socket.close();
+      // socket.close();
       if(callback) callback('closed');
   });
 
@@ -67,6 +72,11 @@ const scanPort = (port, host, family, success, callback) => {
       if(callback) callback('open');
       // return {port: socket.remotePort, host: socket.remoteAddress};
   });
+
+    // socket.on('data', (data) => {
+    //     console.log(data.toString());
+    //     // socket.end();
+    // });
 };
 
 const scanPortRange = (ports, hosts, method, family) => {
