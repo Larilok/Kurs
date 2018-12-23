@@ -15,8 +15,6 @@ let dgram = require('dgram');
 
 let err = require('./errors.js');
 
-function log(...args) {return console.log(...args)}
-
 console.log(process.argv);
 
 let scanPortUDP = (port, host, success, callback) => {
@@ -147,12 +145,17 @@ let showHelp = () => {
     console.log(`Port scanner help:
         Use this tool to check for open ports on one or more TCP/UDP host
         Use:
-        main.js [ports] [hosts] [tcp] [udp]
+        main.js [ports] [hosts] [tcp] [udp] [ipv4] [ipv6]
         ports: specifies the ports to scan. Use "," for single ports and "-" for port ranges, def = 0-65535
-                    ex: main.js 80,400-500,8080
         hosts: optional parameter, def = 127.0.0.1
         tcp: use to perform a tcp scan, def = true
-        udp: use to perform a udp scan, def = false`);
+        udp: use to perform a udp scan, def = false
+        ipv4: use to perform ipv4 scan, def = true
+        ipv6: use to perform ipv6 scan, def = false
+        ex:
+            $:main.js 80,400-500,8080 127.0.0.1-20 udp
+        will perform scan for selected ports on each selected host using udp ipv4 protocol
+        `);
 };
 
 let parseArgsOld = () => {
