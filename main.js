@@ -4,12 +4,14 @@
 //TODO add error classes
 //TODO deal with promise.reject on wrong method in scanPortRange - should it throw an error?
 //TODO fix udp breakdown on large port range
-//TODO fix refuse to exit on large port range
+//DONE//TODO fix refuse to exit on large port range
 
 'use strict';
 
 let net = require('net');
 let dgram = require('dgram');
+
+let err = require('./errors.js');
 
 function log(...args) {return console.log(...args)}
 
@@ -23,6 +25,7 @@ let scanPortUDP = (port, host, success, callback) => {
     socket.on('error', (err) => {
         // console.log(`socket error:\n${err.stack}`);
         // console.log('err');
+        socket.unref();
         socket.close();
         if(callback) callback('closed');
     });
@@ -34,6 +37,7 @@ let scanPortUDP = (port, host, success, callback) => {
     socket.on('listening', () => {
         // console.log(`server listening ${socket.address().address}:${socket.address().port}`);
         success.push({port: socket.address().port, host: socket.address().address});
+        socket.unref();
         socket.close();
         if(callback) callback('open');
     });
@@ -43,12 +47,14 @@ let scanPort = (port, host, success, callback) => {
   let socket = net.createConnection({port: port, host: host});
 
   socket.on('error', err => {
+      socket.unref();
       socket.end();
       if(callback) callback('closed');
   });
 
   socket.on('connect', () => {
       success.push({port: socket.remotePort, host: socket.remoteAddress});
+      socket.unref();
       socket.end();
       if(callback) callback('open');
       // return {port: socket.remotePort, host: socket.remoteAddress};
@@ -83,7 +89,14 @@ let parsePorts = ports => {
         return ports.split(',').map(port => {
             if (port.indexOf('-') !== -1) {
                 let range = port.split('-');
-                checkPortRangeValidity(range);
+                try {
+                    checkPortRangeValidity(range);
+                } catch (error) {
+                    if (error instanceof err.RangeError) {
+                        console.log(error.message + ": " + error.faultyRange[0] + '-' + error.faultyRange[1]);
+                        process.exit(0);
+                    }
+                }
                 let length = range[1] - range[0] + 1;
                 return [...Array(length).keys()].map(x => (x + parseInt(range[0])).toString());
             }
@@ -99,7 +112,14 @@ let parseHosts = hosts => {
             if (port.indexOf('-') !== -1) {
                 let range = port.split('-');
                 range[1] = range[0].slice(0, range[0].lastIndexOf('.')+1) + range[1];
-                checkHostRangeValidity(range);
+                try {
+                    checkHostRangeValidity(range);
+                } catch (error) {
+                    if (error instanceof err.RangeError) {
+                        console.log(error.message + ": " + error.faultyRange[0] + '-' + error.faultyRange[1]);
+                        process.exit(0);
+                    }
+                }
                 let length = range[1].slice(range[1].lastIndexOf('.')+1) - range[0].slice(range[0].lastIndexOf('.')+1) + 1;
                 return [...Array(length).keys()].map(x => range[0]
                     .slice(0, range[0].lastIndexOf('.')+1) +
@@ -117,7 +137,7 @@ let replaceColons = hosts => {
 };
 
 let checkPortRangeValidity = range => {
-    if(range[0] === "" || range[1] === "") throw new Error('Unbounded port range');
+    if(range[0] === "" || range[1] === "") throw new err.RangeError('Unbounded port range', range);
     if(parseInt(range[0]) > parseInt(range[1])) {
         let tempZero = range[0];
         range[0] = range[1];
@@ -127,7 +147,7 @@ let checkPortRangeValidity = range => {
 
 let checkHostRangeValidity = range => {
     if(range[0].lastIndexOf('.') === range[0].length - 1
-        || range[1].lastIndexOf('.') === range[1].length - 1) throw new Error('Unbounded host range');
+        || range[1].lastIndexOf('.') === range[1].length - 1) throw new err.RangeError('Unbounded host range', range);
     if(parseInt(range[0].slice(range[0].lastIndexOf('.')+1)) > parseInt(range[1].slice(range[1].lastIndexOf('.')+1))) {
         let tempZero = range[0];
         range[0] = range[1];
@@ -211,7 +231,6 @@ let parseArgs = () => {
 /*Main()*/{
     let scanParameters = parseArgs();
     console.log(scanParameters);
-    // scanPortRange(scanParameters.ports, scanParameters.hosts, 'qwe');
     if(scanParameters.tcp) scanPortRange(scanParameters.ports, scanParameters.hosts, 'tcp');
     if(scanParameters.udp) scanPortRange(scanParameters.ports, scanParameters.hosts, 'udp');
     // process.exit(0);
