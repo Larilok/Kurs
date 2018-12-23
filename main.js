@@ -18,31 +18,37 @@ const err = require('./errors.js');
 console.log(process.argv);
 
 const scanPortUDP = (port, host, family, success, callback) => {
-    let socket;
-    if(family === 4) socket = dgram.createSocket('udp4');
-    else if(family === 6) socket = dgram.createSocket('udp6');
-    socket.bind(parseInt(port), host);
-    // console.log("HOST: " + host);
+  let socket;
+  if (family === 4) socket = dgram.createSocket('udp4');
+  else if (family === 6) socket = dgram.createSocket('udp6');
 
-    socket.on('error', (err) => {
-        // console.log(`socket error:\n${err.stack}`);
-        // console.log('err');
-        socket.unref();
-        socket.close();
-        if(callback) callback('closed');
-    });
+  socket.bind(parseInt(port), host)
+  // socket.bind(80, '0.0.0.0');
+  // socket.send('my packet',parseInt(port), host, (err,bytes) => {
+  //   console.log(err,"DAMMMMITTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT",bytes);
+  //   socket.close();
+  // });
 
-    socket.on('message', (msg, info) => {
-        console.log(`socket got: ${msg} from ${info.address}:${info.port}`);
-    });
+  socket.on('error', (err) => {
+      //console.log(`socket error:\n${err.stack}`);
+      // console.log(err);
+      success.push({port: err.port, host: err.address, family: 'ipv' + family});
+      socket.unref();
+      socket.close();
+      if(callback) callback('closed');
+  });
 
-    socket.on('listening', () => {
-        // console.log(`server listening ${socket.address().address}:${socket.address().port}`);
-        success.push({port: socket.address().port, host: socket.address().address, family: 'ipv' + family});
-        socket.unref();
-        socket.close();
-        if(callback) callback('open');
-    });
+  socket.on('message', (msg, info) => {
+    
+      console.log(`socket got: ${msg} from ${info.address}:${info.port}`);
+  });
+
+  socket.on('listening', () => {
+      // console.log(`server listening ${socket.address().address}:${socket.address().port}`);
+      socket.unref();
+      socket.close();
+      if(callback) callback('open');
+  });
 };
 
 const scanPort = (port, host, family, success, callback) => {
