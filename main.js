@@ -5,6 +5,8 @@
 //TODO deal with promise.reject on wrong method in scanPortRange - should it throw an error?
 //TODO fix udp breakdown on large port range
 //DONE//TODO fix refuse to exit on large port range
+//TODO rewrite parseArgs
+//TODO rewrite error throws in parsePorts and parseHosts
 
 'use strict';
 
@@ -89,14 +91,7 @@ let parsePorts = ports => {
         return ports.split(',').map(port => {
             if (port.indexOf('-') !== -1) {
                 let range = port.split('-');
-                try {
-                    checkPortRangeValidity(range);
-                } catch (error) {
-                    if (error instanceof err.RangeError) {
-                        console.log(error.message + ": " + error.faultyRange[0] + '-' + error.faultyRange[1]);
-                        process.exit(0);
-                    }
-                }
+                checkPortRangeValidity(range);
                 let length = range[1] - range[0] + 1;
                 return [...Array(length).keys()].map(x => (x + parseInt(range[0])).toString());
             }
@@ -106,20 +101,13 @@ let parsePorts = ports => {
 };
 
 let parseHosts = hosts => {
-    if(hosts.indexOf('.') === -1) throw new Error('Incorrect host notation');
+    if(hosts.indexOf('.') === -1) throw new err.BadHostNotationError('Incorrect host notation', hosts);
     if (hosts.indexOf('-') !== -1) {
         return hosts.split(',').map(port => {
             if (port.indexOf('-') !== -1) {
                 let range = port.split('-');
                 range[1] = range[0].slice(0, range[0].lastIndexOf('.')+1) + range[1];
-                try {
-                    checkHostRangeValidity(range);
-                } catch (error) {
-                    if (error instanceof err.RangeError) {
-                        console.log(error.message + ": " + error.faultyRange[0] + '-' + error.faultyRange[1]);
-                        process.exit(0);
-                    }
-                }
+                checkHostRangeValidity(range);
                 let length = range[1].slice(range[1].lastIndexOf('.')+1) - range[0].slice(range[0].lastIndexOf('.')+1) + 1;
                 return [...Array(length).keys()].map(x => range[0]
                     .slice(0, range[0].lastIndexOf('.')+1) +
@@ -167,13 +155,13 @@ let showHelp = () => {
         udp: use to perform a udp scan, def = false`);
 };
 
-let parseArgs = () => {
+let parseArgsOld = () => {
     let ports = [];
     let hosts = [];
     let wantTcp = false;
     let wantUdp = false;
     //bad args or help request
-    if(( isNaN(parseInt(process.argv[2])) && (process.argv[2] !== 'tcp' && process.argv[2] !== 'udp'))
+    if((process.argv[2] && isNaN(parseInt(process.argv[2])) && (process.argv[2] !== 'tcp' && process.argv[2] !== 'udp'))
         || process.argv[2] === "help") {
         showHelp();
         return process.exit(0);
@@ -183,48 +171,443 @@ let parseArgs = () => {
     //1st arg being dealt with
     if(process.argv.length === 2 || process.argv[2].indexOf('.') !== -1
         || process.argv[2] === 'tcp' || process.argv[2] === 'udp') {//no 1st arg or it is unrelated to ports
-        console.log('first arg not ports');
+        // console.log('first arg not ports');
         let fullPortRange = '0-65535';
         ports = parsePorts(fullPortRange);
-        if(process.argv[2].indexOf('.') !== -1) hosts = parseHosts(process.argv[2]);//1st arg is hosts
-        else if(process.argv[2] === 'tcp') wantTcp = true;//1st arg is tcp request
-        else if(process.argv[2] === 'udp') wantUdp = true;//1st arg is udp request
-        else {//no 1st argument at all
+        if(process.argv.length === 2) {
             let localhost = '127.0.0.1';
             hosts = parseHosts(localhost);
             wantTcp = true;
-        }
+        } else if(process.argv[2].indexOf('.') !== -1) hosts = parseHosts(process.argv[2]);//1st arg is hosts
+        else if(process.argv[2] === 'tcp') wantTcp = true;//1st arg is tcp request
+        else if(process.argv[2] === 'udp') wantUdp = true;//1st arg is udp request
     } else {//first arg is not hosts or type specifier -> ports then
         ports = parsePorts(process.argv[2]);
-    }
 
-    //2nd arg being dealt with
-    if(process.argv.length === 3 || process.argv[3] === 'tcp' || process.argv[3] === 'udp') {//no 2nd arg or i is unrelated to hosts
-        if(hosts.length === 0) {//1st one was ports
-            let localhost = '127.0.0.1';
-            hosts = parseHosts(localhost);
+        //2nd arg being dealt with
+        if (process.argv.length === 3 || process.argv[3] === 'tcp' || process.argv[3] === 'udp') {//no 2nd arg or i is unrelated to hosts
+            console.log("HEY: " + process.argv.length);
+            if (hosts.length === 0) {//1st one was ports
+                let localhost = '127.0.0.1';
+                hosts = parseHosts(localhost);
+            }
+            if (process.argv[3] === 'tcp') wantTcp = true;//2nd arg is tcp request
+            else if (process.argv[3] === 'udp') wantUdp = true;//2nd arg is udp request
+        } else {
+            hosts = parseHosts(process.argv[3]);
+
+            //3rd arg being dealt with
+            if (process.argv.length <= 4 && wantUdp === false) wantTcp = true;//no 3rd arg and udp not  wanted
+            else {
+                if (process.argv[4] === 'tcp') wantTcp = true;//3rd arg is tcp request
+                else if (process.argv[4] === 'udp') wantUdp = true;//3rd arg is udp request
+
+                //4th arg being dealt with
+                if (process.argv[5] === 'tcp') wantTcp = true;//4th arg is tcp request
+                else if (process.argv[5] === 'udp') wantUdp = true;//3rd arg is udp request
+            }
         }
-        if(process.argv[3] === 'tcp') wantTcp = true;//2nd arg is tcp request
-        else if(process.argv[3] === 'udp') wantUdp = true;//2nd arg is udp request
-    } else {
-        hosts = parseHosts(process.argv[3]);
     }
-
-    //3rd arg being dealt with
-    if(process.argv.length <= 4 && wantUdp === false) wantTcp = true;//no 3rd arg and udp not  wanted
-    else {
-        if(process.argv[4] === 'tcp') wantTcp = true;//3rd arg is tcp request
-        else if(process.argv[4] === 'udp') wantUdp = true;//3rd arg is udp request
-    }
-
-    //4th arg being dealt with
-    if(process.argv[5]=== 'tcp') wantTcp = true;//4th arg is tcp request
-    else if(process.argv[5] === 'udp') wantUdp = true;//3rd arg is udp request
     return {
         ports: ports,
         hosts: hosts,
         tcp: wantTcp,
         udp: wantUdp
+    };
+};
+
+let parseArgs = () => {
+    let ports = [];
+    let hosts = [];
+    let wantTcp = false;
+    let wantUdp = false;
+    let wantIPV4 = false;
+    let wantIPV6 = false;
+
+    process.argv = process.argv.map(arg => replaceColons(arg));
+    let args = process.argv;
+    let fullPortRange = '1-65535';
+    let localhost = '127.0.0.1';
+    try {
+        switch (args.length) {
+            case 2://no args
+                ports = parsePorts(fullPortRange);
+                hosts = parseHosts(localhost);
+                wantTcp = true;
+                wantIPV4 = true;
+                break;
+            case 3://1 arg
+                if (parseInt(args[2])) {//arg is ports
+                    ports = parsePorts(args[2]);
+                    hosts = parseHosts(localhost);
+                    wantTcp = true;
+                    wantIPV4 = true;
+                } else if (args[2].indexOf('.') !== -1) {//arg is hosts
+                    ports = parsePorts(fullPortRange);
+                    hosts = parseHosts(args[2]);
+                    wantTcp = true;
+                    wantIPV4 = true;
+                } else if (args[2] === 'tcp' || args[2] === 'ipv4') {
+                    ports = parsePorts(fullPortRange);
+                    hosts = parseHosts(localhost);
+                    wantTcp = true;
+                    wantIPV4 = true;
+                } else if (args[2] === 'udp') {
+                    ports = parsePorts(fullPortRange);
+                    hosts = parseHosts(localhost);
+                    wantUdp = true;
+                    wantIPV4 = true;
+                } else if (args[2] === 'ipv6') {
+                    ports = parsePorts(fullPortRange);
+                    hosts = parseHosts(localhost);
+                    wantTcp = true;
+                    wantIPV6 = true;
+                } else {
+                    showHelp();
+                    return process.exit(0);
+                }
+                break;
+            case 4://2 args
+                //arg 1
+                if (parseInt(args[2])) {//arg 1 is ports
+                    ports = parsePorts(args[2]);
+                } else if (args[2].indexOf('.') !== -1) {//arg 1 is hosts
+                    ports = parsePorts(fullPortRange);
+                    hosts = parseHosts(args[2]);
+                } else if (args[2] === 'tcp') {
+                    ports = parsePorts(fullPortRange);
+                    hosts = parseHosts(localhost);
+                    wantTcp = true;
+                } else if (args[2] === 'udp') {
+                    ports = parsePorts(fullPortRange);
+                    hosts = parseHosts(localhost);
+                    wantUdp = true;
+                } else if (args[2] === 'ipv4') {
+                    ports = parsePorts(fullPortRange);
+                    hosts = parseHosts(localhost);
+                    wantTcp = true;
+                    wantIPV4 = true;
+                } else if (args[2] === 'ipv6') {
+                    ports = parsePorts(fullPortRange);
+                    hosts = parseHosts(localhost);
+                    wantTcp = true;
+                    wantIPV6 = true;
+                } else {
+                    showHelp();
+                    return process.exit(0);
+                }
+                //arg 2
+                if (args[3].indexOf('.') !== -1) {//arg 2 is hosts
+                    if (hosts.length !== 0) {//hosts already present
+                        showHelp();
+                        process.exit(0);
+                    }
+                    hosts = parseHosts(args[3]);
+                    wantTcp = true;
+                    wantIPV4 = true;
+                } else if (args[3] === 'tcp' || args[3] === 'ipv4') {
+                    if (hosts.length === 0) hosts = parseHosts(localhost);
+                    else if (ports.length === 0) ports = parsePorts(fullPortRange);
+                    wantTcp = true;
+                    wantIPV4 = true;
+                } else if (args[3] === 'udp') {
+                    if (hosts.length === 0) hosts = parseHosts(localhost);
+                    else if (ports.length === 0) ports = parsePorts(fullPortRange);
+                    wantUdp = true;
+                    wantIPV4 = true;
+                } else if (args[3] === 'ipv6') {
+                    if (hosts.length === 0) hosts = parseHosts(localhost);
+                    else if (ports.length === 0) ports = parsePorts(fullPortRange);
+                    wantTcp = true;
+                    wantIPV6 = true;
+                } else {
+                    showHelp();
+                    return process.exit(0);
+                }
+                break;
+            case 5://3 args
+                //arg 1
+                if (parseInt(args[2])) {//arg 1 is ports
+                    ports = parsePorts(args[2]);
+                } else if (args[2].indexOf('.') !== -1) {//arg 1 is hosts
+                    ports = parsePorts(fullPortRange);
+                    hosts = parseHosts(args[2]);
+                } else if (args[2] === 'tcp') {
+                    ports = parsePorts(fullPortRange);
+                    hosts = parseHosts(localhost);
+                    wantTcp = true;
+                } else if (args[2] === 'udp') {
+                    ports = parsePorts(fullPortRange);
+                    hosts = parseHosts(localhost);
+                    wantUdp = true;
+                } else {
+                    showHelp();
+                    return process.exit(0);
+                }
+                //arg 2
+                if (args[3].indexOf('.') !== -1) {//arg 2 is hosts
+                    if (hosts.length !== 0) {//hosts already present
+                        showHelp();
+                        process.exit(0);
+                    }
+                    hosts = parseHosts(args[3]);
+                } else if (args[3] === 'tcp') {
+                    if (hosts.length === 0) hosts = parseHosts(localhost);
+                    else if (ports.length === 0) ports = parsePorts(fullPortRange);
+                    wantTcp = true;
+                } else if (args[3] === 'udp') {
+                    if (hosts.length === 0) hosts = parseHosts(localhost);
+                    else if (ports.length === 0) ports = parsePorts(fullPortRange);
+                    wantUdp = true;
+                } else if (args[3] === 'ipv4') {
+                    if (hosts.length === 0) hosts = parseHosts(localhost);
+                    else if (ports.length === 0) ports = parsePorts(fullPortRange);
+                    wantIPV4 = true;
+                } else if (args[3] === 'ipv6') {
+                    if (hosts.length === 0) hosts = parseHosts(localhost);
+                    else if (ports.length === 0) ports = parsePorts(fullPortRange);
+                    wantIPV6 = true;
+                } else {
+                    showHelp();
+                    return process.exit(0);
+                }
+                //arg 3
+                if (args[4] === 'tcp') {
+                    wantTcp = true;
+                    wantIPV4 = true;
+                } else if (args[4] === 'udp') {
+                    wantUdp = true;
+                    wantIPV4 = true;
+                } else if (args[4] === 'ipv4') {
+                    if (!wantUdp) wantTcp = true;//if wantUdp flag was not set, have to activate default parameter
+                    wantIPV4 = true;
+                } else if (args[4] === 'ipv6') {
+                    if (!wantUdp) wantTcp = true;//if wantUdp flag was not set, have to activate default parameter
+                    wantIPV6 = true;
+                } else {
+                    showHelp();
+                    return process.exit(0);
+                }
+                break;
+            case 6://4 args
+                //arg 1
+                if (parseInt(args[2])) {//arg 1 is ports
+                    ports = parsePorts(args[2]);
+                } else if (args[2].indexOf('.') !== -1) {//arg 1 is hosts
+                    ports = parsePorts(fullPortRange);
+                    hosts = parseHosts(args[2]);
+                } else if (args[2] === 'tcp') {
+                    ports = parsePorts(fullPortRange);
+                    hosts = parseHosts(localhost);
+                    wantTcp = true;
+                } else if (args[2] === 'udp') {
+                    ports = parsePorts(fullPortRange);
+                    hosts = parseHosts(localhost);
+                    wantUdp = true;
+                } else {
+                    showHelp();
+                    return process.exit(0);
+                }
+                //arg 2
+                if (args[3].indexOf('.') !== -1) {//arg 2 is hosts
+                    if (hosts.length !== 0) {//hosts already present
+                        showHelp();
+                        process.exit(0);
+                    }
+                    hosts = parseHosts(args[3]);
+                } else if (args[3] === 'tcp') {
+                    if (hosts.length === 0) hosts = parseHosts(localhost);
+                    else if (ports.length === 0) ports = parsePorts(fullPortRange);
+                    wantTcp = true;
+                } else if (args[3] === 'udp') {
+                    if (hosts.length === 0) hosts = parseHosts(localhost);
+                    else if (ports.length === 0) ports = parsePorts(fullPortRange);
+                    wantUdp = true;
+                } else {
+                    showHelp();
+                    return process.exit(0);
+                }
+                //arg 3
+                if (args[4] === 'tcp') {
+                    wantTcp = true;
+                } else if (args[4] === 'udp') {
+                    wantUdp = true;
+                } else if (args[4] === 'ipv4') {
+                    if (!wantUdp) wantTcp = true;//if wantUdp flag was not set, have to activate default parameter
+                    wantIPV4 = true;
+                } else if (args[4] === 'ipv6') {
+                    if (!wantUdp) wantTcp = true;//if wantUdp flag was not set, have to activate default parameter
+                    wantIPV6 = true;
+                } else {
+                    showHelp();
+                    return process.exit(0);
+                }
+                //arg 4
+                if (args[5] === 'tcp') {
+                    wantTcp = true;
+                    wantIPV4 = true;
+                } else if (args[5] === 'udp') {
+                    wantUdp = true;
+                    wantIPV4 = true;
+                } else if (args[5] === 'ipv4') {
+                    if (!wantUdp) wantTcp = true;//if wantUdp flag was not set, have to activate default parameter
+                    wantIPV4 = true;
+                } else if (args[5] === 'ipv6') {
+                    if (!wantUdp) wantTcp = true;//if wantUdp flag was not set, have to activate default parameter
+                    wantIPV6 = true;
+                } else {
+                    showHelp();
+                    return process.exit(0);
+                }
+                break;
+            case 7://5 args
+                //arg 1
+                if (parseInt(args[2])) {//arg 1 is ports
+                    ports = parsePorts(args[2]);
+                } else if (args[2].indexOf('.') !== -1) {//arg 1 is hosts
+                    ports = parsePorts(fullPortRange);
+                    hosts = parseHosts(args[2]);
+                } else {
+                    showHelp();
+                    return process.exit(0);
+                }
+                //arg 2
+                if (args[3].indexOf('.') !== -1) {//arg 2 is hosts
+                    if (hosts.length !== 0) {//hosts already present
+                        showHelp();
+                        process.exit(0);
+                    }
+                    hosts = parseHosts(args[3]);
+                } else if (args[3] === 'tcp') {
+                    if (hosts.length === 0) hosts = parseHosts(localhost);
+                    else if (ports.length === 0) ports = parsePorts(fullPortRange);
+                    wantTcp = true;
+                } else if (args[3] === 'udp') {
+                    if (hosts.length === 0) hosts = parseHosts(localhost);
+                    else if (ports.length === 0) ports = parsePorts(fullPortRange);
+                    wantUdp = true;
+                } else {
+                    showHelp();
+                    return process.exit(0);
+                }
+                //arg 3
+                if (args[4] === 'tcp') {
+                    wantTcp = true;
+                } else if (args[4] === 'udp') {
+                    wantUdp = true;
+                } else {
+                    showHelp();
+                    return process.exit(0);
+                }
+                //arg 4
+                if (args[5] === 'tcp') {
+                    wantTcp = true;
+                } else if (args[5] === 'udp') {
+                    wantUdp = true;
+                } else if (args[5] === 'ipv4') {
+                    if (!wantUdp) wantTcp = true;//if wantUdp flag was not set, have to activate default parameter
+                    wantIPV4 = true;
+                } else if (args[5] === 'ipv6') {
+                    if (!wantUdp) wantTcp = true;//if wantUdp flag was not set, have to activate default parameter
+                    wantIPV6 = true;
+                } else {
+                    showHelp();
+                    return process.exit(0);
+                }
+                //arg 5
+                if (args[6] === 'ipv4') {
+                    wantIPV4 = true;
+                } else if (args[6] === 'ipv6') {
+                    wantIPV6 = true;
+                } else {
+                    showHelp();
+                    return process.exit(0);
+                }
+                break;
+            case 8://6 args
+                //arg 1
+                if (parseInt(args[2])) {//arg 1 is ports
+                    ports = parsePorts(args[2]);
+                } else {
+                    showHelp();
+                    return process.exit(0);
+                }
+                //arg 2
+                if (args[3].indexOf('.') !== -1) {//arg 2 is hosts
+                    hosts = parseHosts(args[3]);
+                } else {
+                    showHelp();
+                    return process.exit(0);
+                }
+                //arg 3
+                if (args[4] === 'tcp') {
+                    wantTcp = true;
+                } else if (args[4] === 'udp') {
+                    wantUdp = true;
+                } else {
+                    showHelp();
+                    return process.exit(0);
+                }
+                //arg 4
+                if (args[5] === 'tcp') {
+                    wantTcp = true;
+                } else if (args[5] === 'udp') {
+                    wantUdp = true;
+                } else {
+                    showHelp();
+                    return process.exit(0);
+                }
+                //arg 5
+                if (args[6] === 'ipv4') {
+                    wantIPV4 = true;
+                } else if (args[6] === 'ipv6') {
+                    wantIPV6 = true;
+                } else {
+                    showHelp();
+                    return process.exit(0);
+                }
+                //arg 6
+                if (args[7] === 'ipv4') {
+                    wantIPV4 = true;
+                } else if (args[7] === 'ipv6') {
+                    wantIPV6 = true;
+                } else {
+                    showHelp();
+                    return process.exit(0);
+                }
+                break;
+            default://too many args
+                console.log('Too many args');
+                showHelp();
+                return process.exit(0);
+        }
+    } catch (e) {
+        if(e instanceof err.BadHostNotationError) {
+            console.log(e.name);
+            console.log(e.message + ": " + e.host);
+            console.log(e.stack);
+            process.exit(1);
+        } else if(e instanceof err.RangeError) {
+            console.log(e.name);
+            console.log(e.message + ": " + e.range);
+            console.log(e.stack);
+            process.exit(1);
+        } else {
+            console.log('Unknown error:');
+            console.log(e.name);
+            console.log(e.message);
+            console.log(e.stack);
+            process.exit(1);
+        }
+    }
+
+    return {
+        ports: ports,
+        hosts: hosts,
+        tcp: wantTcp,
+        udp: wantUdp,
+        ipv4: wantIPV4,
+        ipv6: wantIPV6
     };
 };
 
