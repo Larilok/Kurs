@@ -146,7 +146,7 @@ let showHelp = () => {
         Use this tool to check for open ports on one or more TCP/UDP host
         Use:
         main.js [ports] [hosts] [tcp] [udp] [ipv4] [ipv6]
-        ports: specifies the ports to scan. Use "," for single ports and "-" for port ranges, def = 0-65535
+        ports: specifies the ports to scan. Use "," for single ports and "-" for port ranges, def = 1-65535
         hosts: optional parameter, def = 127.0.0.1
         tcp: use to perform a tcp scan, def = true
         udp: use to perform a udp scan, def = false
@@ -240,14 +240,15 @@ let parseArgs = () => {
                 wantIPV4 = true;
                 break;
             case 3://1 arg
-                if (parseInt(args[2])) {//arg is ports
-                    ports = parsePorts(args[2]);
-                    hosts = parseHosts(localhost);
-                    wantTcp = true;
-                    wantIPV4 = true;
-                } else if (args[2].indexOf('.') !== -1) {//arg is hosts
+                //arg 1
+                if (args[2].indexOf('.') !== -1) {//arg is hosts
                     ports = parsePorts(fullPortRange);
                     hosts = parseHosts(args[2]);
+                    wantTcp = true;
+                    wantIPV4 = true;
+                } else if (parseInt(args[2])) {//arg is ports
+                    ports = parsePorts(args[2]);
+                    hosts = parseHosts(localhost);
                     wantTcp = true;
                     wantIPV4 = true;
                 } else if (args[2] === 'tcp' || args[2] === 'ipv4') {
@@ -272,11 +273,11 @@ let parseArgs = () => {
                 break;
             case 4://2 args
                 //arg 1
-                if (parseInt(args[2])) {//arg 1 is ports
-                    ports = parsePorts(args[2]);
-                } else if (args[2].indexOf('.') !== -1) {//arg 1 is hosts
+                if (args[2].indexOf('.') !== -1) {//arg 1 is hosts
                     ports = parsePorts(fullPortRange);
                     hosts = parseHosts(args[2]);
+                } else if (parseInt(args[2])) {//arg 1 is ports
+                    ports = parsePorts(args[2]);
                 } else if (args[2] === 'tcp') {
                     ports = parsePorts(fullPortRange);
                     hosts = parseHosts(localhost);
@@ -330,11 +331,11 @@ let parseArgs = () => {
                 break;
             case 5://3 args
                 //arg 1
-                if (parseInt(args[2])) {//arg 1 is ports
-                    ports = parsePorts(args[2]);
-                } else if (args[2].indexOf('.') !== -1) {//arg 1 is hosts
+                if (args[2].indexOf('.') !== -1) {//arg 1 is hosts
                     ports = parsePorts(fullPortRange);
                     hosts = parseHosts(args[2]);
+                } else if (parseInt(args[2])) {//arg 1 is ports
+                    ports = parsePorts(args[2]);
                 } else if (args[2] === 'tcp') {
                     ports = parsePorts(fullPortRange);
                     hosts = parseHosts(localhost);
@@ -394,11 +395,11 @@ let parseArgs = () => {
                 break;
             case 6://4 args
                 //arg 1
-                if (parseInt(args[2])) {//arg 1 is ports
-                    ports = parsePorts(args[2]);
-                } else if (args[2].indexOf('.') !== -1) {//arg 1 is hosts
+                if (args[2].indexOf('.') !== -1) {//arg 1 is hosts
                     ports = parsePorts(fullPortRange);
                     hosts = parseHosts(args[2]);
+                } else if (parseInt(args[2])) {//arg 1 is ports
+                    ports = parsePorts(args[2]);
                 } else if (args[2] === 'tcp') {
                     ports = parsePorts(fullPortRange);
                     hosts = parseHosts(localhost);
@@ -465,11 +466,11 @@ let parseArgs = () => {
                 break;
             case 7://5 args
                 //arg 1
-                if (parseInt(args[2])) {//arg 1 is ports
-                    ports = parsePorts(args[2]);
-                } else if (args[2].indexOf('.') !== -1) {//arg 1 is hosts
+                if (args[2].indexOf('.') !== -1) {//arg 1 is hosts
                     ports = parsePorts(fullPortRange);
                     hosts = parseHosts(args[2]);
+                } else if (parseInt(args[2])) {//arg 1 is ports
+                    ports = parsePorts(args[2]);
                 } else {
                     showHelp();
                     return process.exit(0);
@@ -529,7 +530,7 @@ let parseArgs = () => {
                 break;
             case 8://6 args
                 //arg 1
-                if (parseInt(args[2])) {//arg 1 is ports
+                if (parseInt(args[2]) && args[2].indexOf('.') === -1) {//arg 1 is ports
                     ports = parsePorts(args[2]);
                 } else {
                     showHelp();
