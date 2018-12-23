@@ -1,2 +1,2 @@
-# It begins
+# TCP/UDP port scanner in NodeJs
 
