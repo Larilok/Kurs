@@ -341,6 +341,7 @@ const parseArgs = () => {
                     wantTcp = true;
                     wantIPV4 = true;
                 } else if (parseInt(args[2])) {//arg is ports
+                    console.log(parseInt(args[2]));
                     ports = parsePorts(args[2]);
                     hosts = parseHosts(localhost);
                     wantTcp = true;
