@@ -23,8 +23,6 @@ const scanPortUDP = (port, host, family, success, callback) => {
   if (family === 4) socket = dgram.createSocket('udp4');
   else if (family === 6) socket = dgram.createSocket('udp6');
 
-  // socket.bind(parseInt(port), host);
-  // socket.bind(60001, '192.168.1.212');
       socket.send('my packet', 0, 9, parseInt(port), host
           , (err, bytes) => {
               // console.log("ERROR: " + err, bytes);
@@ -141,6 +139,7 @@ const parsePorts = ports => {
 };
 
 const parseHosts = hosts => {
+    console.log('inParseHosts: ', hosts);
     let isIPV6 = false;
     let isURL = false;
     // if(hosts.indexOf('.') === -1) throw new err.BadHostNotationError('Incorrect host notation', hosts);
@@ -165,19 +164,33 @@ const parseHosts = hosts => {
             }).reduce((first, second) => first.concat(second), []);
         } else return hosts.split(',');
     } else if(isURL) {
+        if(hosts.indexOf(',') !== -1) return hosts.split(',');
+        else return [].push(hosts);
         //DOES NOT WORK, finishes before dns resolves
-        console.log('is URL');
-        let resolvedHosts = [];
-        hosts.split(',').map(host => {
-            dns.lookup(host, (error, address) => {
-                if(error) throw new Error('failed DNS lookup');//TODO//replace with custom error
-                else {
-                    console.log("address:\n", address);
-                    resolvedHosts.push(address);
-                }
-            });
-        });
-        return resolvedHosts;
+        // console.log('is URL', hosts);
+        // let resolvedHosts = [];
+        // Promise.all(hosts.split(',').map(host => {
+        //     if(host) {
+        //         return new Promise((resolve, reject) => {
+        //             dns.lookup(host, (error, address) => {
+        //                 if (error) {
+        //                     console.log(error);
+        //                     resolve('error');
+        //                 }//reject('failed DNS lookup');//throw new Error('failed DNS lookup');//TODO//replace with custom error
+        //                 else {
+        //                     console.log("address:\n", address);
+        //                     resolvedHosts.push(address);
+        //                     resolve('success');
+        //                 }
+        //             });
+        //         });
+        //     }
+        // })).then((suc) => {
+        //     console.log("RESolved hosts: ", resolvedHosts);
+        //     return resolvedHosts;
+        // });
+
+        // return resolvedHosts;
     } else if(isIPV6) {//seems to be working
         if (hosts.indexOf('-') !== -1) {
             return hosts.split(',').map(host => {
