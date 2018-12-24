@@ -12,6 +12,7 @@
 
 const net = require('net');
 const dgram = require('dgram');
+const dns = require('dns');
 
 const err = require('./errors.js');
 
@@ -23,38 +24,38 @@ const scanPortUDP = (port, host, family, success, callback) => {
   else if (family === 6) socket = dgram.createSocket('udp6');
 
   // socket.bind(parseInt(port), host);
-  socket.bind(60001, '192.168.1.212');
-    try {
-        socket.send('my packet', 0, 9, parseInt(port), host
-            , (err, bytes) => {
-            console.log("ERROR: " + err, bytes);
-            socket.close();
-        }
-        );
-    } catch (e) {
-      console.warn(e);
-    }
+  // socket.bind(60001, '192.168.1.212');
+      socket.send('my packet', 0, 9, parseInt(port), host
+          , (err, bytes) => {
+              // console.log("ERROR: " + err, bytes);
+              // success.push({port: port, host: host, method:'UDP', family: 'ipv' + family});
+              setTimeout(() => {
+                  socket.unref();
+                  socket.close();
+                  if(callback) callback('closed');
+              }, 2000);
+              // socket.unref();
+              // socket.close();
+          }
+      );
 
   socket.on('error', (err) => {
-      //console.log(`socket error:\n${err.stack}`);
       console.log("called error");
       console.log(err);
-      success.push({port: port, host: host, family: 'ipv' + family});
-      socket.unref();
+      success.closed.push({port: port, host: host, method:'UDP', family: 'ipv' + family});
+      // socket.unref();
       // socket.close();
       if(callback) callback('closed');
   });
 
   socket.on('message', (msg, info) => {
-    
       console.log(`socket got: ${msg} from ${info.address}:${info.port}`);
+      success.open.push({port: port, host: host, method:'UDP', family: 'ipv' + family});
+      if(callback) callback('open');
   });
 
   socket.on('listening', () => {//empty arg list
       console.log(`server listening ${socket.address().address}:${socket.address().port}`);
-      // socket.unref();
-      // socket.close();
-      // if(callback) callback('open');
   });
 };
 
@@ -62,27 +63,31 @@ const scanPort = (port, host, family, success, callback) => {
   let socket = net.createConnection({port: port, host: host, family: family});
 
   socket.on('error', err => {
+      success.closed.push({port: socket.remotePort, host: socket.remoteAddress, method: 'TCP', family: 'ipv' + family});
       socket.unref();
       socket.end();
       if(callback) callback('closed');
   });
 
   socket.on('connect', () => {
-      success.push({port: socket.remotePort, host: socket.remoteAddress, family: 'ipv' + family});
+      success.open.push({port: socket.remotePort, host: socket.remoteAddress, method: 'TCP', family: 'ipv' + family});
       socket.unref();
       socket.end();
       if(callback) callback('open');
       // return {port: socket.remotePort, host: socket.remoteAddress};
   });
 
-    // socket.on('data', (data) => {
-    //     console.log(data.toString());
-    //     // socket.end();
-    // });
+    socket.on('data', (data) => {
+        console.log(data.toString());
+        // socket.end();
+    });
 };
 
 const scanPortRange = (ports, hosts, method, family) => {
-    let success = [];
+    let success = {
+        open: [],
+        closed: []
+    };
     Promise.all(hosts.map(host => {
         return ports.map(port => {
             if(method === 'tcp') return new Promise((resolve, reject) => scanPort(port, host, family, success, (arg) => resolve(arg)));
@@ -92,16 +97,33 @@ const scanPortRange = (ports, hosts, method, family) => {
     }).reduce((first, second) => first.concat(second), []))
         .then((res) => {
             // console.log(res);
-            return showOpenGates(success);
+            return showOpenGates(success, method);
         }, (err) => {
             console.log(err);
             process.exit(1);
         });
 };
 
-const showOpenGates = gates => {
-  console.log('Scanning complete. Open ports:');
-  console.log(gates);
+const showOpenGates = (success, method) => {
+  console.log('Scanning complete');
+  if(method === 'tcp') {
+      if(success.open.length <= success.closed.length) {//less open ports than closed
+          console.log('Open ports are:');
+          success.open.map(port => {
+              console.log(port);
+          });
+      } else {//less closed ports
+          console.log('Too many open ports. Closed ports are:');
+          success.closed.map( port => {
+              console.log(port);
+          })
+      }
+  } else if( method === 'udp') {
+      console.log('All ports that are not in use are presumed open. Ports in use are: ');
+      success.open.map(port => {
+          console.log(port);
+      })
+  }
 };
 
 const parsePorts = ports => {
@@ -118,26 +140,64 @@ const parsePorts = ports => {
     } else return ports.split(',');
 };
 
-//TODO distinguish between ipv4, ipv6 and URL
 const parseHosts = hosts => {
+    let isIPV6 = false;
+    let isURL = false;
     // if(hosts.indexOf('.') === -1) throw new err.BadHostNotationError('Incorrect host notation', hosts);
+    // if(host.split('.').length !== 4) throw new err.BadHostNotationError('Incorrect host notation', hosts);
     hosts.split(',').map((host) => {
-        // if(host.split('.').length !== 4) throw new err.BadHostNotationError('Incorrect host notation', hosts);
+        if(host.indexOf(':') !== -1) isIPV6 = true;
+        else if( isNaN(parseInt(host.split('.').pop())) ) isURL = true;
     });
-    if (hosts.indexOf('-') !== -1) {
-        return hosts.split(',').map(port => {
-            if (port.indexOf('-') !== -1) {
-                let range = port.split('-');
-                range[1] = range[0].slice(0, range[0].lastIndexOf('.')+1) + range[1];
-                checkHostRangeValidity(range);
-                let length = range[1].slice(range[1].lastIndexOf('.')+1) - range[0].slice(range[0].lastIndexOf('.')+1) + 1;
-                return [...Array(length).keys()].map(x => range[0]
-                    .slice(0, range[0].lastIndexOf('.')+1) +
-                    (x + parseInt(range[0].slice(range[0].lastIndexOf('.')+1))).toString());
-            }
-            return port;
-        }).reduce((first, second) => first.concat(second), []);
-    } else return hosts.split(',');
+    if(!isURL && !isIPV6) {
+        if (hosts.indexOf('-') !== -1) {
+            return hosts.split(',').map(host => {
+                if (host.indexOf('-') !== -1) {
+                    let range = host.split('-');
+                    range[1] = range[0].slice(0, range[0].lastIndexOf('.') + 1) + range[1];
+                    checkIPV4HostRangeValidity(range);
+                    let length = range[1].slice(range[1].lastIndexOf('.') + 1) - range[0].slice(range[0].lastIndexOf('.') + 1) + 1;
+                    return [...Array(length).keys()].map(x => range[0]
+                            .slice(0, range[0].lastIndexOf('.') + 1) +
+                        (x + parseInt(range[0].slice(range[0].lastIndexOf('.') + 1))).toString());
+                }
+                return host;
+            }).reduce((first, second) => first.concat(second), []);
+        } else return hosts.split(',');
+    } else if(isURL) {
+        //DOES NOT WORK, finishes before dns resolves
+        console.log('is URL');
+        let resolvedHosts = [];
+        hosts.split(',').map(host => {
+            dns.lookup(host, (error, address) => {
+                if(error) throw new Error('failed DNS lookup');
+                else {
+                    console.log("address:\n", address);
+                    resolvedHosts.push(address);
+                }
+            });
+        });
+        return resolvedHosts;
+    } else if(isIPV6) {//seems to be working
+        if (hosts.indexOf('-') !== -1) {
+            return hosts.split(',').map(host => {
+                if (host.indexOf('-') !== -1) {//has range
+                    let range = host.split('-');
+                    range[1] = range[0].slice(0, range[0].lastIndexOf(':') + 1) + range[1];
+                    checkIPV6HostRangeValidity(range);
+                    let snd = parseInt(range[1].slice(range[1].lastIndexOf(':') + 1), 16);
+                    let fst = parseInt(range[0].slice(range[0].lastIndexOf(':') + 1), 16);
+                    // console.log(fst, snd);
+                    let length = snd - fst + 1;
+                    // console.log(range, length);
+                    return [...Array(length).keys()].map(x => range[0]
+                            .slice(0, range[0].lastIndexOf(':') + 1) +
+                        (x + parseInt(range[0].slice(range[0].lastIndexOf(':') + 1), 16)).toString(16));
+                }
+                return host;
+            }).reduce((first, second) => first.concat(second), []);
+        } else return hosts.split(',');
+    } else throw new err.BadHostNotationError('Incorrect host notation', hosts);
 };
 
 const replaceColons = hosts => {
@@ -155,7 +215,17 @@ const checkPortRangeValidity = range => {
     }
 };
 
-const checkHostRangeValidity = range => {
+const checkIPV6HostRangeValidity = range => {
+    if((range[0].lastIndexOf(':') === range[0].length - 1 && range[0] !== '::')//':' is the last elem, but address is not '::'
+        || (range[1].lastIndexOf(':') === range[1].length - 1) && range[1] !== '::') throw new err.RangeError('Unbounded host range', range);
+    if(parseInt(range[0].slice(range[0].lastIndexOf(':')+1), 16) > parseInt(range[1].slice(range[1].lastIndexOf(':')+1), 16)) {
+        let tempZero = range[0];
+        range[0] = range[1];
+        range[1] = tempZero;
+    }
+};
+
+const checkIPV4HostRangeValidity = range => {
     if(range[0].lastIndexOf('.') === range[0].length - 1
         || range[1].lastIndexOf('.') === range[1].length - 1) throw new err.RangeError('Unbounded host range', range);
     if(parseInt(range[0].slice(range[0].lastIndexOf('.')+1)) > parseInt(range[1].slice(range[1].lastIndexOf('.')+1))) {
@@ -640,6 +710,7 @@ const parseArgs = () => {
 };
 
 /*Main()*/{
+    // console.log('RESULTS:\n', parseHosts('1:2::6:7:a8-aa,1:2:3::4'));
     const scanParameters = parseArgs();
     console.log(scanParameters);
     if(scanParameters.tcp) {
@@ -650,5 +721,4 @@ const parseArgs = () => {
         if(scanParameters.ipv4) scanPortRange(scanParameters.ports, scanParameters.hosts, 'udp', 4);
         if(scanParameters.ipv6) scanPortRange(scanParameters.ports, scanParameters.hosts, 'udp', 6);
     }
-    // process.exit(0);
 }
