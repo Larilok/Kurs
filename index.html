@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css">
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.3/umd/popper.min.js"></script>
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.1.3/js/bootstrap.min.js"></script>
+  <title>Document</title>
+  <style>
+    body{
+      margin: 1.75rem;
+    }
+  </style>
+</head>
+<body>
+  
+  <div id="container-fluid ml-5">
+    <h1 class ="display-2 align-center">Welcome to TCP/UDP port scanner powered by <kbd>Node.js</kbd> </h1>
+  </div>
+
+  <div class="d-flex flex-column ">
+  <form>
+    <div class="form-group mt-4">
+      <label for="hosts"><h3>Hosts:</h3></label>
+      <input type="text" class="form-control" id="email" placeholder="Enter host" name="hosts">
+    </div>
+    <div class="form-group">
+      <label for="ports"><h3>Ports:</h3></label>
+      <input type="text" class="form-control" id="pwd" placeholder="Enter ports" name="ports">
+    </div>
+    <div class="d-flex justify-content-around">
+      <div class="custom-control custom-checkbox">
+        <input type="checkbox" class="custom-control-input" id="customCheckTCP" name="tcp">
+        <label class="custom-control-label" for="customCheckTCP">TCP</label>
+      </div>
+      <div class="custom-control custom-checkbox">
+        <input type="checkbox" class="custom-control-input " id="customCheckUDP" name="udp">
+        <label class="custom-control-label" for="customCheckUDP">UPD</label>
+      </div>
+      <div class="custom-control custom-checkbox">
+        <input type="checkbox" class="custom-control-input " id="customCheckv4" name="ipv4">
+        <label class="custom-control-label" for="customCheckv4">IPv4</label>
+      </div>
+      <div class="custom-control custom-checkbox">
+        <input type="checkbox" class="custom-control-input " id="customCheckv6" name="ipv6">
+        <label class="custom-control-label" for="customCheckv6">IPv6</label>
+      </div>
+  </div>
+    <button type="submit" class="btn btn-primary">Submit</button>
+  </form>
+  <button type="button" class="btn mt-3" data-toggle="collapse" data-target="#demo">Show help</button>
+  <div id="demo" class="collapse border border-info ">
+    Lorem ipsum dolor sit amet, consectetur adipisicing elit,
+    sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam,
+    quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
+  </div>
+</div>
+</body>
+</html>
