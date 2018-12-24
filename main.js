@@ -22,13 +22,15 @@ const scanPortUDP = (port, host, family, success, callback) => {
   if (family === 4) socket = dgram.createSocket('udp4');
   else if (family === 6) socket = dgram.createSocket('udp6');
 
-  socket.bind(parseInt(port), host)
-  // socket.bind(80, '0.0.0.0');
+  // socket.bind(parseInt(port), host);
+  socket.bind(60001, '192.168.1.212');
     try {
-        socket.send('my packet', parseInt(port), host, (err, bytes) => {
-            console.log(err, "DAMMMMITTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT", bytes);
+        socket.send('my packet', 0, 9, parseInt(port), host
+            , (err, bytes) => {
+            console.log("ERROR: " + err, bytes);
             socket.close();
-        });
+        }
+        );
     } catch (e) {
       console.warn(e);
     }
@@ -37,7 +39,7 @@ const scanPortUDP = (port, host, family, success, callback) => {
       //console.log(`socket error:\n${err.stack}`);
       console.log("called error");
       console.log(err);
-      success.push({port: err.port, host: err.address, family: 'ipv' + family});
+      success.push({port: port, host: host, family: 'ipv' + family});
       socket.unref();
       // socket.close();
       if(callback) callback('closed');
@@ -48,11 +50,11 @@ const scanPortUDP = (port, host, family, success, callback) => {
       console.log(`socket got: ${msg} from ${info.address}:${info.port}`);
   });
 
-  socket.on('listening', () => {
-      // console.log(`server listening ${socket.address().address}:${socket.address().port}`);
-      socket.unref();
-      socket.close();
-      if(callback) callback('open');
+  socket.on('listening', () => {//empty arg list
+      console.log(`server listening ${socket.address().address}:${socket.address().port}`);
+      // socket.unref();
+      // socket.close();
+      // if(callback) callback('open');
   });
 };
 
@@ -116,10 +118,11 @@ const parsePorts = ports => {
     } else return ports.split(',');
 };
 
+//TODO distinguish between ipv4, ipv6 and URL
 const parseHosts = hosts => {
-    if(hosts.indexOf('.') === -1) throw new err.BadHostNotationError('Incorrect host notation', hosts);
+    // if(hosts.indexOf('.') === -1) throw new err.BadHostNotationError('Incorrect host notation', hosts);
     hosts.split(',').map((host) => {
-        if(host.split('.').length !== 4) throw new err.BadHostNotationError('Incorrect host notation', hosts);
+        // if(host.split('.').length !== 4) throw new err.BadHostNotationError('Incorrect host notation', hosts);
     });
     if (hosts.indexOf('-') !== -1) {
         return hosts.split(',').map(port => {
@@ -248,7 +251,7 @@ const parseArgs = () => {
     let wantIPV4 = false;
     let wantIPV6 = false;
 
-    process.argv = process.argv.map(arg => replaceColons(arg));
+    // process.argv = process.argv.map(arg => replaceColons(arg));
     let args = process.argv;
     let fullPortRange = '1-65535';
     let localhost = '127.0.0.1';
@@ -262,7 +265,7 @@ const parseArgs = () => {
                 break;
             case 3://1 arg
                 //arg 1
-                if (args[2].indexOf('.') !== -1) {//arg is hosts
+                if (args[2].indexOf('.') !== -1 || args[2].indexOf(':') !== -1) {//arg is hosts
                     ports = parsePorts(fullPortRange);
                     hosts = parseHosts(args[2]);
                     wantTcp = true;
@@ -294,7 +297,7 @@ const parseArgs = () => {
                 break;
             case 4://2 args
                 //arg 1
-                if (args[2].indexOf('.') !== -1) {//arg 1 is hosts
+                if (args[2].indexOf('.') !== -1 || args[2].indexOf(':') !== -1) {//arg 1 is hosts
                     ports = parsePorts(fullPortRange);
                     hosts = parseHosts(args[2]);
                 } else if (parseInt(args[2])) {//arg 1 is ports
@@ -322,7 +325,7 @@ const parseArgs = () => {
                     return process.exit(0);
                 }
                 //arg 2
-                if (args[3].indexOf('.') !== -1) {//arg 2 is hosts
+                if (args[3].indexOf('.') !== -1 || args[3].indexOf(':') !== -1) {//arg 2 is hosts
                     if (hosts.length !== 0) {//hosts already present
                         showHelp();
                         process.exit(0);
@@ -352,7 +355,7 @@ const parseArgs = () => {
                 break;
             case 5://3 args
                 //arg 1
-                if (args[2].indexOf('.') !== -1) {//arg 1 is hosts
+                if (args[2].indexOf('.') !== -1 || args[2].indexOf(':') !== -1) {//arg 1 is hosts
                     ports = parsePorts(fullPortRange);
                     hosts = parseHosts(args[2]);
                 } else if (parseInt(args[2])) {//arg 1 is ports
@@ -370,7 +373,7 @@ const parseArgs = () => {
                     return process.exit(0);
                 }
                 //arg 2
-                if (args[3].indexOf('.') !== -1) {//arg 2 is hosts
+                if (args[3].indexOf('.') !== -1 || args[3].indexOf(':') !== -1) {//arg 2 is hosts
                     if (hosts.length !== 0) {//hosts already present
                         showHelp();
                         process.exit(0);
@@ -416,7 +419,7 @@ const parseArgs = () => {
                 break;
             case 6://4 args
                 //arg 1
-                if (args[2].indexOf('.') !== -1) {//arg 1 is hosts
+                if (args[2].indexOf('.') !== -1 || args[2].indexOf(':') !== -1) {//arg 1 is hosts
                     ports = parsePorts(fullPortRange);
                     hosts = parseHosts(args[2]);
                 } else if (parseInt(args[2])) {//arg 1 is ports
@@ -434,7 +437,7 @@ const parseArgs = () => {
                     return process.exit(0);
                 }
                 //arg 2
-                if (args[3].indexOf('.') !== -1) {//arg 2 is hosts
+                if (args[3].indexOf('.') !== -1 || args[3].indexOf(':') !== -1) {//arg 2 is hosts
                     if (hosts.length !== 0) {//hosts already present
                         showHelp();
                         process.exit(0);
@@ -487,7 +490,7 @@ const parseArgs = () => {
                 break;
             case 7://5 args
                 //arg 1
-                if (args[2].indexOf('.') !== -1) {//arg 1 is hosts
+                if (args[2].indexOf('.') !== -1 || args[2].indexOf(':') !== -1) {//arg 1 is hosts
                     ports = parsePorts(fullPortRange);
                     hosts = parseHosts(args[2]);
                 } else if (parseInt(args[2])) {//arg 1 is ports
@@ -497,7 +500,7 @@ const parseArgs = () => {
                     return process.exit(0);
                 }
                 //arg 2
-                if (args[3].indexOf('.') !== -1) {//arg 2 is hosts
+                if (args[3].indexOf('.') !== -1 || args[3].indexOf(':') !== -1) {//arg 2 is hosts
                     if (hosts.length !== 0) {//hosts already present
                         showHelp();
                         process.exit(0);
@@ -551,14 +554,14 @@ const parseArgs = () => {
                 break;
             case 8://6 args
                 //arg 1
-                if (parseInt(args[2]) && args[2].indexOf('.') === -1) {//arg 1 is ports
+                if (parseInt(args[2]) && args[2].indexOf('.') === -1 && args[2].indexOf(':') === -1) {//arg 1 is ports
                     ports = parsePorts(args[2]);
                 } else {
                     showHelp();
                     return process.exit(0);
                 }
                 //arg 2
-                if (args[3].indexOf('.') !== -1) {//arg 2 is hosts
+                if (args[3].indexOf('.') !== -1 || args[3].indexOf(':') !== -1) {//arg 2 is hosts
                     hosts = parseHosts(args[3]);
                 } else {
                     showHelp();
