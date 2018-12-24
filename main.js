@@ -12,7 +12,7 @@
 
 const net = require('net');
 const dgram = require('dgram');
-const dns = require('dns');
+// const dns = require('dns');
 
 const err = require('./errors.js');
 
@@ -108,18 +108,21 @@ const showOpenGates = (success, method) => {
   if(method === 'tcp') {
       if(success.open.length <= success.closed.length || success.open.length <= 100) {//less open ports than closed
           console.log('Open ports are:');
-          success.open.map(port => {
+          if(success.open.length === 0) console.log('None');
+          else success.open.map(port => {
               console.log(port);
           });
       } else {//less closed ports
           console.log('Too many open ports. Closed ports are:');
-          success.closed.map( port => {
+          if(success.closed.length === 0) console.log('None');
+          else success.closed.map( port => {
               console.log(port);
           })
       }
   } else if( method === 'udp') {
       console.log('All ports that are not in use are presumed open. Ports in use are: ');
-      success.open.map(port => {
+      if(success.open.length === 0) console.log('None');
+      else success.open.map(port => {
           console.log(port);
       })
   }
