@@ -104,8 +104,9 @@ const scanPortRange = (ports, hosts, method, family) => {
 
 const showOpenGates = (success, method) => {
   console.log('Scanning complete');
+  // console.log(success);
   if(method === 'tcp') {
-      if(success.open.length <= success.closed.length) {//less open ports than closed
+      if(success.open.length <= success.closed.length || success.open.length <= 100) {//less open ports than closed
           console.log('Open ports are:');
           success.open.map(port => {
               console.log(port);
@@ -165,7 +166,11 @@ const parseHosts = hosts => {
         } else return hosts.split(',');
     } else if(isURL) {
         if(hosts.indexOf(',') !== -1) return hosts.split(',');
-        else return [].push(hosts);
+        else {
+            const returner = [];
+            returner.push(hosts);
+            return returner;
+        }
         //DOES NOT WORK, finishes before dns resolves
         // console.log('is URL', hosts);
         // let resolvedHosts = [];
