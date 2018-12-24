@@ -1,12 +1,12 @@
-//TODO ipv6 support
+//DONE//TODO ipv6 support
 //TODO udp support - somewhat done - still very unreliable
 //TODO rewrite in OOP
-//TODO add error classes
+//DONE//TODO add error classes
 //TODO deal with promise.reject on wrong method in scanPortRange - should it throw an error?
 //TODO fix udp breakdown on large port range
 //DONE//TODO fix refuse to exit on large port range
-//TODO rewrite parseArgs
-//TODO rewrite error throws in parsePorts and parseHosts
+//DONE//TODO rewrite parseArgs
+//DONE//TODO rewrite error throws in parsePorts and parseHosts
 
 'use strict';
 
@@ -170,7 +170,7 @@ const parseHosts = hosts => {
         let resolvedHosts = [];
         hosts.split(',').map(host => {
             dns.lookup(host, (error, address) => {
-                if(error) throw new Error('failed DNS lookup');
+                if(error) throw new Error('failed DNS lookup');//TODO//replace with custom error
                 else {
                     console.log("address:\n", address);
                     resolvedHosts.push(address);
@@ -244,8 +244,8 @@ const showHelp = () => {
         hosts: optional parameter, def = 127.0.0.1
         tcp: use to perform a tcp scan, def = true
         udp: use to perform a udp scan, def = false
-        ipv4: use to perform ipv4 scan, def = true
-        ipv6: use to perform ipv6 scan, def = false
+        ipv4: use to perform ipv4 scan when using url as a host, def = true
+        ipv6: use to perform ipv6 scan when using url as a host, def = false
         ex:
             $:main.js 80,400-500,8080 127.0.0.1-20 udp
         will perform scan for selected ports on each selected host using udp ipv4 protocol
@@ -710,7 +710,6 @@ const parseArgs = () => {
 };
 
 /*Main()*/{
-    // console.log('RESULTS:\n', parseHosts('1:2::6:7:a8-aa,1:2:3::4'));
     const scanParameters = parseArgs();
     console.log(scanParameters);
     if(scanParameters.tcp) {
