@@ -11,10 +11,10 @@ const port = process.argv[2] || 8888;
 
 http.createServer((req, res) => {
     const uri = url.parse(req.url).pathname;
-    console.log("uri", uri);
-    console.log("search", url.parse(req.url).search);
+    // console.log("uri", uri);
+    // console.log("search", url.parse(req.url).search);
     let filename = path.join(__dirname, uri);
-    console.log("filename", filename);
+    // console.log("filename", filename);
     // console.log(req,res);
     if(req.method === 'POST') {
       if(uri === '/USSR'){
@@ -26,8 +26,8 @@ http.createServer((req, res) => {
           let promise = new Promise((resolve,reject) => pars.performScan((arg) => resolve(arg)))
           .then((result) => {
             res.writeHead(200, {'Context-Type': 'text/plain'});
-            console.log("out: ",pars.getOutput());
-            console.log("crap", JSON.stringify(pars.getOutput()));
+            console.log("\nout: ",pars.getOutput());
+            // console.log("crap", JSON.stringify(pars.getOutput()));
             res.write((pars.getOutput()));
             res.end()
           })
