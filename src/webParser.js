@@ -334,9 +334,9 @@ class Parser {
           if(!wantTcp && !wantUdp) wantTcp = true;
           // console.log(typeof(ports),[]);
           console.log(hosts,ports);
-          if(ports[0] === '')  ports = this.parsePorts(fullPortRange);
+          if(ports === '')  ports = this.parsePorts(fullPortRange);
           else ports = this.parsePorts(ports);
-          if(hosts[0] === '')  hosts = this.parseHosts(localhost);
+          if(hosts === '')  hosts = this.parseHosts(localhost);
           else hosts = this.parseHosts(hosts);
         } catch (e) {
             if (e instanceof err.BadHostNotationError) {

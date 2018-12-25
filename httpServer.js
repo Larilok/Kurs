@@ -15,7 +15,7 @@ http.createServer((req, res) => {
     console.log("search", url.parse(req.url).search);
     let filename = path.join(__dirname, uri);
     console.log("filename", filename);
-    
+    console.log(req,res);
     if(req.method === 'POST') {
       if(uri === '/USSR'){
         let buffer;

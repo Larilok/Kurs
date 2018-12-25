@@ -33,7 +33,10 @@ function postData(url = ``, data = {}){
       },
       body:  JSON.stringify(data),
     })
-    .then(response => {console.log("Lol",response.json(),"and THEN", response)})
-    .then(data => console.log("data ", data, " json ",JSON.stringify(data)))
+    .then(response => {return response.json();})
+    .then(data => {
+      console.log((data));
+      el('#output').innerHTML = JSON.stringify(data)
+      })
     .catch(error => console.error(error));
 }
