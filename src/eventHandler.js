@@ -7,6 +7,25 @@ const el = (str) => {
     return document.getElementsByClassName(str.slice(1));
 }
 
+window.addEventListener('DOMContentLoaded', () => {
+  console.log('1');
+  el('#help').innerHTML = `Use this tool to check for open ports on one or more TCP/UDP host
+  <br>Hosts: specifies the hosts to check. You may use:
+  <br>      ipv4(xxx.xxx.xxx.255 or xxx.xxx.xxx.),
+  <br>      ipv6(xxxx: xxxx: xxxx: xxxx: ffff: ffff: ffff: ffff)
+  <br>      url(example.com or http://example.com) 
+  <br>      <strong>def = 127.0.0.1 </strong>
+  <br>Ports: specifies the ports to scan. Use "," for single ports and "-" for port ranges, <strong>def = 1-65535 </strong>
+  <br>TCP: use to perform a tcp scan, <strong>def = true </strong>
+  <br>UDP: use to perform a udp scan, <strong>def = false </strong>
+  <br>IPv4: use to perform ipv4 scan when using URL as a host, <strong>def = true</strong>
+  <br>IPv6: use to perform ipv6 scan when using URL as a host, <strong>def = false</strong>
+  <br>ex:
+  <br>    Hosts: 127.0.0.1-20
+  <br>    Ports: 80,400-500,8080  
+  <br>will perform scan for selected ports on each selected host using TCP IPv4 protocol
+  `;
+},true);
 
 
 el('#scanBTN').addEventListener('click', () => {

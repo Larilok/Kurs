@@ -102,6 +102,7 @@ class Parser {
                 method: 'TCP',
                 family: 'ipv' + family
             });
+            // console.log("error ", port);
             socket.unref();
             socket.end();
             if (callback) callback('closed');
@@ -114,6 +115,7 @@ class Parser {
                 method: 'TCP',
                 family: 'ipv' + family
             });
+            // console.log("Connected", port);
             socket.unref();
             socket.end();
             if (callback) callback('open');
@@ -134,15 +136,15 @@ class Parser {
         };
         // console.log('In scanPortRange');
         Promise.all(hosts.map(host => {
-            console.log("Begin host ", host);
+            // console.log("Begin host ", host);
             return ports.map(port => {
-              console.log("Begin port ",port);
-                if (method === 'tcp') return new Promise((resolve, reject) => this.scanPort(port, host, family, success, (arg) => resolve(arg)));
-                else if (method === 'udp') return new Promise((resolve, reject) => this.scanPortUDP(port, host, family, success, (arg) => resolve(arg)));
-                else {
-                  this._output +="error";
-                  return Promise.reject('Unknown method used');
-                }
+              // console.log("Begin port ",port);
+              if (method === 'tcp') return new Promise((resolve, reject) => this.scanPort(port, host, family, success, (arg) => resolve(arg)));
+              else if (method === 'udp') return new Promise((resolve, reject) => this.scanPortUDP(port, host, family, success, (arg) => resolve(arg)));
+              else {
+                this._output +="error";
+                return Promise.reject('Unknown method used');
+              }
             });
         }).reduce((first, second) => first.concat(second), []))
             .then((res) => {
@@ -167,23 +169,20 @@ class Parser {
             this._output += 'Open ports are:\n';
             if(success.open.length === 0) this._output += 'None';
             else success.open.map(port => {
-              console.log("Success.open port is ", port);
-              this._output += JSON.stringify(port) +'\n';
+              this._output += JSON.stringify(port).slice(1, JSON.stringify(port).length-1) +'\n';
             });
           } else {//less closed ports
             this._output +='Too many open ports. Closed ports are:\n';
             if(success.open.length === 0) this._output += 'None';
             else success.closed.map(port => {
-                console.log("Success.closed port is ", port);
-                this._output += JSON.stringify(port) +'\n';
+                this._output += JSON.stringify(port).slice(1, JSON.stringify(port).length-1) +'\n';
             })
           }
         } else if (method === 'udp') {
               this._output += 'All ports that are not in use are presumed open. Ports in use are:\n';
               if(success.open.length ===0 ) this._output += 'None';
               else success.open.map(port => {
-                console.log("Success.open port is ", port);
-                this._output += JSON.stringify(port) +'\n';
+                this._output += JSON.stringify(port).slice(1, JSON.stringify(port).length-1) +'\n';
               })
         }
     };
