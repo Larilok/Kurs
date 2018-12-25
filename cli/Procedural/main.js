@@ -1,18 +1,7 @@
-//DONE//TODO ipv6 support
-//TODO udp support - somewhat done - still very unreliable
-//TODO rewrite in OOP
-//DONE//TODO add error classes
-//TODO deal with promise.reject on wrong method in scanPortRange - should it throw an error?
-//TODO fix udp breakdown on large port range
-//DONE//TODO fix refuse to exit on large port range
-//DONE//TODO rewrite parseArgs
-//DONE//TODO rewrite error throws in parsePorts and parseHosts
-
 'use strict';
 
 const net = require('net');
 const dgram = require('dgram');
-const dns = require('dns');
 
 const err = require('./errors.js');
 
@@ -23,19 +12,15 @@ const scanPortUDP = (port, host, family, success, callback) => {
   if (family === 4) socket = dgram.createSocket('udp4');
   else if (family === 6) socket = dgram.createSocket('udp6');
 
-  // socket.bind(parseInt(port), host);
-  // socket.bind(60001, '192.168.1.212');
       socket.send('my packet', 0, 9, parseInt(port), host
           , (err, bytes) => {
               // console.log("ERROR: " + err, bytes);
-              // success.push({port: port, host: host, method:'UDP', family: 'ipv' + family});
+              // success.closed.push({port: port, host: host, method:'UDP', family: 'ipv' + family});
               setTimeout(() => {
                   socket.unref();
                   socket.close();
-                  if(callback) callback('closed');
+                  if(callback) callback('timeout');
               }, 2000);
-              // socket.unref();
-              // socket.close();
           }
       );
 
@@ -74,12 +59,10 @@ const scanPort = (port, host, family, success, callback) => {
       socket.unref();
       socket.end();
       if(callback) callback('open');
-      // return {port: socket.remotePort, host: socket.remoteAddress};
   });
 
     socket.on('data', (data) => {
         console.log(data.toString());
-        // socket.end();
     });
 };
 
@@ -106,21 +89,25 @@ const scanPortRange = (ports, hosts, method, family) => {
 
 const showOpenGates = (success, method) => {
   console.log('Scanning complete');
+  // console.log(success);
   if(method === 'tcp') {
-      if(success.open.length <= success.closed.length) {//less open ports than closed
+      if(success.open.length <= success.closed.length || success.open.length <= 100) {//less open ports than closed
           console.log('Open ports are:');
-          success.open.map(port => {
+          if(success.open.length === 0) console.log('None');
+          else success.open.map(port => {
               console.log(port);
           });
       } else {//less closed ports
           console.log('Too many open ports. Closed ports are:');
-          success.closed.map( port => {
+          if(success.closed.length === 0) console.log('None');
+          else success.closed.map( port => {
               console.log(port);
           })
       }
   } else if( method === 'udp') {
       console.log('All ports that are not in use are presumed open. Ports in use are: ');
-      success.open.map(port => {
+      if(success.open.length === 0) console.log('None');
+      else success.open.map(port => {
           console.log(port);
       })
   }
@@ -143,10 +130,8 @@ const parsePorts = ports => {
 const parseHosts = hosts => {
     let isIPV6 = false;
     let isURL = false;
-    // if(hosts.indexOf('.') === -1) throw new err.BadHostNotationError('Incorrect host notation', hosts);
-    // if(host.split('.').length !== 4) throw new err.BadHostNotationError('Incorrect host notation', hosts);
     hosts.split(',').map((host) => {
-        if(host.indexOf(':') !== -1) isIPV6 = true;
+        if(host.indexOf(':') !== -1 && !(host.split(':')[0].slice(0,4) === 'http')) isIPV6 = true;
         else if( isNaN(parseInt(host.split('.').pop())) ) isURL = true;
     });
     if(!isURL && !isIPV6) {
@@ -165,20 +150,13 @@ const parseHosts = hosts => {
             }).reduce((first, second) => first.concat(second), []);
         } else return hosts.split(',');
     } else if(isURL) {
-        //DOES NOT WORK, finishes before dns resolves
-        console.log('is URL');
-        let resolvedHosts = [];
-        hosts.split(',').map(host => {
-            dns.lookup(host, (error, address) => {
-                if(error) throw new Error('failed DNS lookup');//TODO//replace with custom error
-                else {
-                    console.log("address:\n", address);
-                    resolvedHosts.push(address);
-                }
-            });
-        });
-        return resolvedHosts;
-    } else if(isIPV6) {//seems to be working
+        if(hosts.indexOf(',') !== -1) return hosts.split(',');
+        else {
+            const returner = [];
+            returner.push(hosts);
+            return returner;
+        }
+    } else if(isIPV6) {
         if (hosts.indexOf('-') !== -1) {
             return hosts.split(',').map(host => {
                 if (host.indexOf('-') !== -1) {//has range
@@ -198,12 +176,6 @@ const parseHosts = hosts => {
             }).reduce((first, second) => first.concat(second), []);
         } else return hosts.split(',');
     } else throw new err.BadHostNotationError('Incorrect host notation', hosts);
-};
-
-const replaceColons = hosts => {
-    if(hosts.indexOf(':') !== -1) {
-        return hosts.split(':').join('.');
-    } else return hosts;
 };
 
 const checkPortRangeValidity = range => {
@@ -250,67 +222,6 @@ const showHelp = () => {
             $:main.js 80,400-500,8080 127.0.0.1-20 udp
         will perform scan for selected ports on each selected host using udp ipv4 protocol
         `);
-};
-
-const parseArgsOld = () => {
-    let ports = [];
-    let hosts = [];
-    let wantTcp = false;
-    let wantUdp = false;
-    //bad args or help request
-    if((process.argv[2] && isNaN(parseInt(process.argv[2])) && (process.argv[2] !== 'tcp' && process.argv[2] !== 'udp'))
-        || process.argv[2] === "help") {
-        showHelp();
-        return process.exit(0);
-    }//insufficient or wrong args or help call
-    process.argv = process.argv.map(arg => replaceColons(arg));
-
-    //1st arg being dealt with
-    if(process.argv.length === 2 || process.argv[2].indexOf('.') !== -1
-        || process.argv[2] === 'tcp' || process.argv[2] === 'udp') {//no 1st arg or it is unrelated to ports
-        // console.log('first arg not ports');
-        let fullPortRange = '0-65535';
-        ports = parsePorts(fullPortRange);
-        if(process.argv.length === 2) {
-            let localhost = '127.0.0.1';
-            hosts = parseHosts(localhost);
-            wantTcp = true;
-        } else if(process.argv[2].indexOf('.') !== -1) hosts = parseHosts(process.argv[2]);//1st arg is hosts
-        else if(process.argv[2] === 'tcp') wantTcp = true;//1st arg is tcp request
-        else if(process.argv[2] === 'udp') wantUdp = true;//1st arg is udp request
-    } else {//first arg is not hosts or type specifier -> ports then
-        ports = parsePorts(process.argv[2]);
-
-        //2nd arg being dealt with
-        if (process.argv.length === 3 || process.argv[3] === 'tcp' || process.argv[3] === 'udp') {//no 2nd arg or i is unrelated to hosts
-            console.log("HEY: " + process.argv.length);
-            if (hosts.length === 0) {//1st one was ports
-                let localhost = '127.0.0.1';
-                hosts = parseHosts(localhost);
-            }
-            if (process.argv[3] === 'tcp') wantTcp = true;//2nd arg is tcp request
-            else if (process.argv[3] === 'udp') wantUdp = true;//2nd arg is udp request
-        } else {
-            hosts = parseHosts(process.argv[3]);
-
-            //3rd arg being dealt with
-            if (process.argv.length <= 4 && wantUdp === false) wantTcp = true;//no 3rd arg and udp not  wanted
-            else {
-                if (process.argv[4] === 'tcp') wantTcp = true;//3rd arg is tcp request
-                else if (process.argv[4] === 'udp') wantUdp = true;//3rd arg is udp request
-
-                //4th arg being dealt with
-                if (process.argv[5] === 'tcp') wantTcp = true;//4th arg is tcp request
-                else if (process.argv[5] === 'udp') wantUdp = true;//3rd arg is udp request
-            }
-        }
-    }
-    return {
-        ports: ports,
-        hosts: hosts,
-        tcp: wantTcp,
-        udp: wantUdp
-    };
 };
 
 const parseArgs = () => {
