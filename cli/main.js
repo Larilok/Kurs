@@ -12,7 +12,7 @@
 
 const net = require('net');
 const dgram = require('dgram');
-const dns = require('dns');
+// const dns = require('dns');
 
 const err = require('./errors.js');
 
@@ -23,8 +23,6 @@ const scanPortUDP = (port, host, family, success, callback) => {
   if (family === 4) socket = dgram.createSocket('udp4');
   else if (family === 6) socket = dgram.createSocket('udp6');
 
-  // socket.bind(parseInt(port), host);
-  // socket.bind(60001, '192.168.1.212');
       socket.send('my packet', 0, 9, parseInt(port), host
           , (err, bytes) => {
               // console.log("ERROR: " + err, bytes);
@@ -106,21 +104,25 @@ const scanPortRange = (ports, hosts, method, family) => {
 
 const showOpenGates = (success, method) => {
   console.log('Scanning complete');
+  // console.log(success);
   if(method === 'tcp') {
-      if(success.open.length <= success.closed.length) {//less open ports than closed
+      if(success.open.length <= success.closed.length || success.open.length <= 100) {//less open ports than closed
           console.log('Open ports are:');
-          success.open.map(port => {
+          if(success.open.length === 0) console.log('None');
+          else success.open.map(port => {
               console.log(port);
           });
       } else {//less closed ports
           console.log('Too many open ports. Closed ports are:');
-          success.closed.map( port => {
+          if(success.closed.length === 0) console.log('None');
+          else success.closed.map( port => {
               console.log(port);
           })
       }
   } else if( method === 'udp') {
       console.log('All ports that are not in use are presumed open. Ports in use are: ');
-      success.open.map(port => {
+      if(success.open.length === 0) console.log('None');
+      else success.open.map(port => {
           console.log(port);
       })
   }
@@ -141,6 +143,7 @@ const parsePorts = ports => {
 };
 
 const parseHosts = hosts => {
+    console.log('inParseHosts: ', hosts);
     let isIPV6 = false;
     let isURL = false;
     // if(hosts.indexOf('.') === -1) throw new err.BadHostNotationError('Incorrect host notation', hosts);
@@ -165,19 +168,37 @@ const parseHosts = hosts => {
             }).reduce((first, second) => first.concat(second), []);
         } else return hosts.split(',');
     } else if(isURL) {
+        if(hosts.indexOf(',') !== -1) return hosts.split(',');
+        else {
+            const returner = [];
+            returner.push(hosts);
+            return returner;
+        }
         //DOES NOT WORK, finishes before dns resolves
-        console.log('is URL');
-        let resolvedHosts = [];
-        hosts.split(',').map(host => {
-            dns.lookup(host, (error, address) => {
-                if(error) throw new Error('failed DNS lookup');//TODO//replace with custom error
-                else {
-                    console.log("address:\n", address);
-                    resolvedHosts.push(address);
-                }
-            });
-        });
-        return resolvedHosts;
+        // console.log('is URL', hosts);
+        // let resolvedHosts = [];
+        // Promise.all(hosts.split(',').map(host => {
+        //     if(host) {
+        //         return new Promise((resolve, reject) => {
+        //             dns.lookup(host, (error, address) => {
+        //                 if (error) {
+        //                     console.log(error);
+        //                     resolve('error');
+        //                 }//reject('failed DNS lookup');//throw new Error('failed DNS lookup');//TODO//replace with custom error
+        //                 else {
+        //                     console.log("address:\n", address);
+        //                     resolvedHosts.push(address);
+        //                     resolve('success');
+        //                 }
+        //             });
+        //         });
+        //     }
+        // })).then((suc) => {
+        //     console.log("RESolved hosts: ", resolvedHosts);
+        //     return resolvedHosts;
+        // });
+
+        // return resolvedHosts;
     } else if(isIPV6) {//seems to be working
         if (hosts.indexOf('-') !== -1) {
             return hosts.split(',').map(host => {
@@ -341,7 +362,6 @@ const parseArgs = () => {
                     wantTcp = true;
                     wantIPV4 = true;
                 } else if (parseInt(args[2])) {//arg is ports
-                    console.log(parseInt(args[2]));
                     ports = parsePorts(args[2]);
                     hosts = parseHosts(localhost);
                     wantTcp = true;
