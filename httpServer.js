@@ -25,9 +25,10 @@ http.createServer((req, res) => {
           const pars = new parser(buffer);
           let promise = new Promise((resolve,reject) => pars.performScan((arg) => resolve(arg)))
           .then((result) => {
-            res.writeHead(200, {'Context-Type': 'text/plain'});
+            res.writeHead(200, {'Context-Type': 'application/json'});
             console.log("out: ",pars.getOutput());
-            res.write(pars.getOutput());
+            console.log("crap", JSON.stringify(pars.getOutput()));
+            res.write(JSON.stringify(pars.getOutput()));
             res.end()
           })
         })

@@ -11,8 +11,8 @@ const el = (str) => {
 
 el('#scanBTN').addEventListener('click', () => {
   let data = {
-    ports: el('#ports').value.trim().split(','),
-    hosts: el('#hosts').value.trim().split(','),
+    ports: el('#ports').value.trim(),
+    hosts: el('#hosts').value.trim(),
     wantTcp: el('#TCP').checked,
     wantUdp: el('#UDP').checked,
     wantIPV4: el('#IPv4').checked,
@@ -21,8 +21,7 @@ el('#scanBTN').addEventListener('click', () => {
   console.log(data);
   
   postData(`http://localhost:3501/USSR`,data)
-    .then(data => console.log(JSON.stringify(data)))
-    .catch(error => console.error(error))
+    
 });
 
 function postData(url = ``, data = {}){
@@ -34,5 +33,7 @@ function postData(url = ``, data = {}){
       },
       body:  JSON.stringify(data),
     })
-    .then(response => {response.json()});
+    .then(response => {console.log("Lol",response.json(),"and THEN", response)})
+    .then(data => console.log("data ", data, " json ",JSON.stringify(data)))
+    .catch(error => console.error(error));
 }

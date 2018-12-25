@@ -147,13 +147,15 @@ class Parser {
         }).reduce((first, second) => first.concat(second), []))
             .then((res) => {
                 // console.log(res);
+                if(callback) callback('done');
                 return this.showOpenGates(success, method);
+                
             }, (err) => {
               this._output += err;
               return;
               // process.exit(1);
             });
-            if(callback) callback('done');
+            
     };
 
     // const
@@ -333,9 +335,9 @@ class Parser {
           // console.log(typeof(ports),[]);
           console.log(hosts,ports);
           if(ports[0] === '')  ports = this.parsePorts(fullPortRange);
-          else ports = this.ParsePorts(ports);
+          else ports = this.parsePorts(ports);
           if(hosts[0] === '')  hosts = this.parseHosts(localhost);
-          else hosts = this.ParseHosts(hosts);
+          else hosts = this.parseHosts(hosts);
         } catch (e) {
             if (e instanceof err.BadHostNotationError) {
                 this._output += e.name + '\n' + e.message + ": " + e.host + '\n' + e.stack;
