@@ -1,140 +1,11 @@
 'use strict';
 
-const net = require('net');
-const dgram = require('dgram');
-const dns = require('dns');
-
 const err = require('./errors.js');
-
-console.log(process.argv);
 
 class Parser {
     constructor() {
         this.scanParameters = this.parseArgs();
     }
-
-    performScan() {
-        if(this.scanParameters.tcp) {
-            if(this.scanParameters.ipv4) this.scanPortRange(this.scanParameters.ports, this.scanParameters.hosts, 'tcp', 4);
-            if(this.scanParameters.ipv6) this.scanPortRange(this.scanParameters.ports, this.scanParameters.hosts, 'tcp', 6);
-        }
-        if(this.scanParameters.udp) {
-            if(this.scanParameters.ipv4) this.scanPortRange(this.scanParameters.ports, this.scanParameters.hosts, 'udp', 4);
-            if(this.scanParameters.ipv6) this.scanPortRange(this.scanParameters.ports, this.scanParameters.hosts, 'udp', 6);
-        }
-    }
-
-    scanPortUDP(port, host, family, success, callback) {
-        let socket;
-        if (family === 4) socket = dgram.createSocket('udp4');
-        else if (family === 6) socket = dgram.createSocket('udp6');
-
-        socket.send('my packet', 0, 9, parseInt(port), host
-            , (err, bytes) => {
-                // console.log("ERROR: " + err, bytes);
-                // success.closed.push({port: port, host: host, method:'UDP', family: 'ipv' + family});
-                setTimeout(() => {
-                    socket.unref();
-                    socket.close();
-                    if(callback) callback('timeout');
-                }, 2000);
-            }
-        );
-
-        socket.on('error', (err) => {
-            console.log("called error");
-            console.log(err);
-            success.closed.push({port: port, host: host, method:'UDP', family: 'ipv' + family});
-            // socket.unref();
-            // socket.close();
-            if(callback) callback('closed');
-        });
-
-        socket.on('message', (msg, info) => {
-            console.log(`socket got: ${msg} from ${info.address}:${info.port}`);
-            success.open.push({port: port, host: host, method:'UDP', family: 'ipv' + family});
-            if(callback) callback('open');
-        });
-
-        socket.on('listening', () => {//empty arg list
-            console.log(`server listening ${socket.address().address}:${socket.address().port}`);
-        });
-    };
-
-    scanPort(port, host, family, success, callback) {
-        let socket = net.createConnection({port: port, host: host, family: family});
-
-        socket.on('error', err => {
-            success.closed.push({
-                port: socket.remotePort,
-                host: socket.remoteAddress,
-                method: 'TCP',
-                family: 'ipv' + family
-            });
-            socket.unref();
-            socket.end();
-            if (callback) callback('closed');
-        });
-
-        socket.on('connect', () => {
-            success.open.push({
-                port: socket.remotePort,
-                host: socket.remoteAddress,
-                method: 'TCP',
-                family: 'ipv' + family
-            });
-            socket.unref();
-            socket.end();
-            if (callback) callback('open');
-        });
-
-        socket.on('data', (data) => {
-            console.log(data.toString());
-        });
-    };
-
-    scanPortRange(ports, hosts, method, family) {
-        let success = {
-            open: [],
-            closed: []
-        };
-        Promise.all(hosts.map(host => {
-            return ports.map(port => {
-                if (method === 'tcp') return new Promise((resolve, reject) => this.scanPort(port, host, family, success, (arg) => resolve(arg)));
-                else if (method === 'udp') return new Promise((resolve, reject) => this.scanPortUDP(port, host, family, success, (arg) => resolve(arg)));
-                else return Promise.reject('Unknown method used');
-            });
-        }).reduce((first, second) => first.concat(second), []))
-            .then((res) => {
-                // console.log(res);
-                return this.showOpenGates(success, method);
-            }, (err) => {
-                console.log(err);
-                process.exit(1);
-            });
-    };
-
-    showOpenGates(success, method) {
-        console.log('Scanning complete');
-        if (method === 'tcp') {
-            if (success.open.length <= success.closed.length) {//less open ports than closed
-                console.log('Open ports are:');
-                success.open.map(port => {
-                    console.log(port);
-                });
-            } else {//less closed ports
-                console.log('Too many open ports. Closed ports are:');
-                success.closed.map(port => {
-                    console.log(port);
-                })
-            }
-        } else if (method === 'udp') {
-            console.log('All ports that are not in use are presumed open. Ports in use are: ');
-            success.open.map(port => {
-                console.log(port);
-            })
-        }
-    };
 
     parsePorts(ports) {
         if (ports.indexOf('-') !== -1) {
@@ -643,7 +514,5 @@ class Parser {
     };
 
 }
-/*Main()*/{
-    let parser = new Parser();
-    parser.performScan();
-}
+
+module.exports = Parser;
