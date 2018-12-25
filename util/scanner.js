@@ -3,41 +3,48 @@
 const net = require('net');
 const dgram = require('dgram');
 
-const Parser = require("./parser");
-
+const Printer = require('../util/Printer');
 
 class Scanner {
+    constructor(Parser, args) {
+      this.parser = new Parser(args);
+    }
 
     performScan() {
-        const parser = new Parser();
-
         let success = [];
-        let method = '';
         new Promise((resolve) => {
-            if(parser.scanParameters.tcp) {
-                method = 'tcp';
-                if(parser.scanParameters.ipv4) this.scanPortRange(parser.scanParameters.ports, parser.scanParameters.hosts, 'tcp', 4, (arg, scanRes) => {
-                    success = scanRes;
+            if(this.parser.scanParameters.tcp) {
+                if(this.parser.scanParameters.ipv4) this.scanPortRange(this.parser.scanParameters.ports, this.parser.scanParameters.hosts, 'tcp', 4, (arg, scanRes) => {
+                    success.push(scanRes);
                     resolve(arg);
                 });
-                if(parser.scanParameters.ipv6) this.scanPortRange(parser.scanParameters.ports, parser.scanParameters.hosts, 'tcp', 6, (arg, scanRes) => {
-                    success = scanRes;
-                    resolve(arg);
-                });
-            }
-            if(parser.scanParameters.udp) {
-                method = 'udp';
-                if(parser.scanParameters.ipv4) this.scanPortRange(parser.scanParameters.ports, parser.scanParameters.hosts, 'udp', 4, (arg, scanRes) => {
-                    success = scanRes;
-                    resolve(arg);
-                });
-                if(parser.scanParameters.ipv6) this.scanPortRange(parser.scanParameters.ports, parser.scanParameters.hosts, 'udp', 6, (arg, scanRes) => {
-                    success = scanRes;
+                if(this.parser.scanParameters.ipv6) this.scanPortRange(this.parser.scanParameters.ports, this.parser.scanParameters.hosts, 'tcp', 6, (arg, scanRes) => {
+                    success.push(scanRes);
                     resolve(arg);
                 });
             }
+            if(this.parser.scanParameters.udp) {
+                if(this.parser.scanParameters.ipv4) this.scanPortRange(this.parser.scanParameters.ports, this.parser.scanParameters.hosts, 'udp', 4, (arg, scanRes) => {
+                    success.push(scanRes);
+                    resolve(arg);
+                });
+                if(this.parser.scanParameters.ipv6) this.scanPortRange(this.parser.scanParameters.ports, this.parser.scanParameters.hosts, 'udp', 6, (arg, scanRes) => {
+                    success.push(scanRes);
+                    resolve(arg);
+                });
+            }
+
+            
+
         }).then(res => {
-            return this.showOpenGates(success, method);
+          success = success.reduce((acc, current) => { 
+            acc.open = acc.open.concat(current.open); 
+            acc.closed = acc.closed.concat(current.closed); 
+            return acc; 
+          }, {open: [], closed: []});
+
+            const printer = new Printer(success);
+            return printer.showOpenGatesMixed();
         });
 
     }
@@ -125,34 +132,13 @@ class Scanner {
         }).reduce((first, second) => first.concat(second), []))
             .then((res) => {
                 if(callback) callback('done', success);
-                else return this.showOpenGates(success, method);
+                else return this.showOpenGates(success);
             }, (err) => {
                 console.log(err);
                 process.exit(1);
             });
     };
 
-    showOpenGates(success, method) {
-        console.log('Scanning complete');
-        if (method === 'tcp') {
-            if (success.open.length <= success.closed.length) {//less open ports than closed
-                console.log('Open ports are:');
-                success.open.map(port => {
-                    console.log(port);
-                });
-            } else {//less closed ports
-                console.log('Too many open ports. Closed ports are:');
-                success.closed.map(port => {
-                    console.log(port);
-                })
-            }
-        } else if (method === 'udp') {
-            console.log('All ports that are not in use are presumed open. Ports in use are: ');
-            success.open.map(port => {
-                console.log(port);
-            })
-        }
-    };
 }
 
 module.exports = Scanner;

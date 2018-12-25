@@ -4,31 +4,42 @@ const http = require("http");
 const url = require("url");
 const path = require("path");
 const fs = require("fs");
-const buff = require("buffer");
+// const buff = require("buffer");
 
-const parser = require("./src/webParser");
+const Parser = require("./src/webParser");
+const Scanner = require("../util/scanner")
+
 const port = process.argv[2] || 4242;
 
 http.createServer((req, res) => {
     const uri = url.parse(req.url).pathname;
+
     // console.log("uri", uri);
     // console.log("search", url.parse(req.url).search);
+
     let filename = path.join(__dirname, uri);
+
     // console.log("filename", filename);
     // console.log(req,res);
+
     if(req.method === 'POST') {
       if(uri === '/USSR'){
         let buffer;
+
         // console.log(req);
+
         req.on('data', chunk => {       
           buffer = JSON.parse(chunk);
-          const pars = new parser(buffer);
-          let promise = new Promise((resolve,reject) => pars.performScan((arg) => resolve(arg)))
+          const scanner = new Scanner(Parser, buffer);
+          let printer;
+          new Promise((resolve) => printer = new Printer(scanner.performScan((arg) => resolve(arg))))
           .then((result) => {
             res.writeHead(200, {'Context-Type': 'text/plain'});
-            console.log("\nout: ",pars.getOutput());
-            // console.log("crap", JSON.stringify(pars.getOutput()));
-            res.write((pars.getOutput()));
+            console.log("\nout: ",scanner);
+
+            // console.log("crap", JSON.stringify(scanner.getOutput()));
+
+            res.write((scanner.getOutput()));
             res.end()
           })
         })

@@ -1,10 +1,10 @@
 'use strict';
 
-const err = require('./errors.js');
+const err = require('../util/errors.js');
 
 class Parser {
-    constructor() {
-        this.scanParameters = this.parseArgs();
+    constructor(argv) {
+        this.scanParameters = this.parseArgs(argv);
     }
 
     parsePorts(ports) {
@@ -24,6 +24,13 @@ class Parser {
     parseHosts(hosts) {
         let isIPV6 = false;
         let isURL = false;
+
+        hosts = hosts.split(',').map((host) => {
+          if((host.split(':')[0].slice(0,4) === 'http')) {
+            return host.split(':')[1].slice(2, host.length);
+          }
+        }).toString();
+
         hosts.split(',').map((host) => {
             if(host.indexOf(':') !== -1 && !(host.split(':')[0].slice(0,4) === 'http')) isIPV6 = true;
             else if( isNaN(parseInt(host.split('.').pop())) ) isURL = true;
@@ -118,7 +125,7 @@ class Parser {
         `);
     };
 
-    parseArgs() {
+    parseArgs(argv) {
         let ports = [];
         let hosts = [];
         let wantTcp = false;
@@ -126,7 +133,7 @@ class Parser {
         let wantIPV4 = false;
         let wantIPV6 = false;
 
-        let args = process.argv;
+        let args = argv;
         let fullPortRange = '1-65535';
         let localhost = '127.0.0.1';
         try {

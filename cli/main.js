@@ -1,8 +1,9 @@
 'use strict';
 
-const Scanner = require("./scanner");
+const Scanner = require("../util/scanner");
+const Parser = require("./parser");
 
 /*Main()*/{
-    let parser = new Scanner();
-    parser.performScan();
+    let scanner = new Scanner(Parser,process.argv);
+    scanner.performScan();
 }

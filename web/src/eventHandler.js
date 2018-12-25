@@ -8,7 +8,6 @@ const el = (str) => {
 }
 
 window.addEventListener('DOMContentLoaded', () => {
-  console.log('1');
   el('#help').innerHTML = `Use this tool to check for open ports on one or more TCP/UDP host
   <br>Hosts: specifies the hosts to check. You may use:
   <br>      ipv4(xxx.xxx.xxx.255 or xxx.xxx.xxx.),
