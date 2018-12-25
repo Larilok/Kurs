@@ -11,12 +11,12 @@ const el = (str) => {
 
 el('#scanBTN').addEventListener('click', () => {
   let data = {
-    "ports": el('#ports').value.trim().split(','),
-    "hosts": el('#hosts').value.trim().split(','),
-    "wantTcp": el('#TCP').checked,
-    "wantUdp": el('#UDP').checked,
-    "wantIPV4": el('#IPv4').checked,
-    "wantIPV6": el('#IPv6').checked
+    ports: el('#ports').value.trim().split(','),
+    hosts: el('#hosts').value.trim().split(','),
+    wantTcp: el('#TCP').checked,
+    wantUdp: el('#UDP').checked,
+    wantIPV4: el('#IPv4').checked,
+    wantIPV6: el('#IPv6').checked
   }
   console.log(data);
   
@@ -29,9 +29,10 @@ function postData(url = ``, data = {}){
     return fetch(url, {
       method: 'POST',
       headers: {
-        'Content-type': 'multipart/text'
+        'Content-type': 'application/json'
+        // 'Content-type': 'multipart/mixed; charset=UTF-8'
       },
-      body:  data,
+      body:  JSON.stringify(data),
     })
     .then(response => response.text());
 }

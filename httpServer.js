@@ -4,6 +4,7 @@ const http = require("http");
 const url = require("url");
 const path = require("path");
 const fs = require("fs");
+const buff = require("buffer");
 
 // const parser = require("./src/webParser");
 const port = process.argv[2] || 8888;
@@ -20,16 +21,12 @@ http.createServer((req, res) => {
         let buffer = '';
         // console.log(req);
         req.on('data', chunk => {
-          console.log(typeof(chunk));
-          fs.readFile(chunk, "binary", (err,data) =>{
-          if(err) console.log(err);
-          // console.log("Data:" , data);
-          console.log("Data:" , data)});
-          console.log("Chunk: %j",chunk);
-          console.log("Chunk: ",chunk);
+          console.log(JSON.parse(chunk));
+          
+          
           buffer += chunk;
         })
-        console.log(buffer);
+        // console.log(buffer);
         // res.writeHead(200, {'Context-Type': 'application/json'});
         // res.end()
       };
