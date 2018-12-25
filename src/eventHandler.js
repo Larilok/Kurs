@@ -34,5 +34,5 @@ function postData(url = ``, data = {}){
       },
       body:  JSON.stringify(data),
     })
-    .then(response => response.text());
+    .then(response => {response.json()});
 }

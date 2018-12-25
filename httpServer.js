@@ -6,7 +6,7 @@ const path = require("path");
 const fs = require("fs");
 const buff = require("buffer");
 
-// const parser = require("./src/webParser");
+const parser = require("./src/webParser");
 const port = process.argv[2] || 8888;
 
 http.createServer((req, res) => {
@@ -18,17 +18,20 @@ http.createServer((req, res) => {
     
     if(req.method === 'POST') {
       if(uri === '/USSR'){
-        let buffer = '';
+        let buffer;
         // console.log(req);
-        req.on('data', chunk => {
-          console.log(JSON.parse(chunk));
-          
-          
-          buffer += chunk;
+        req.on('data', chunk => {       
+          buffer = JSON.parse(chunk);
+          const pars = new parser(buffer);
+          let promise = new Promise((resolve,reject) => pars.performScan((arg) => resolve(arg)))
+          .then((result) => {
+            res.writeHead(200, {'Context-Type': 'text/plain'});
+            console.log("out: ",pars.getOutput());
+            res.write(pars.getOutput());
+            res.end()
+          })
         })
-        // console.log(buffer);
-        // res.writeHead(200, {'Context-Type': 'application/json'});
-        // res.end()
+        
       };
       return;
     };

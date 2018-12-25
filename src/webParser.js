@@ -22,22 +22,33 @@ const err = require('./errors.js');
 // console.log(process.argv);
 
 class Parser {
-    constructor() {
-        this.scanParameters = this.parseArgs();
+    constructor(obj) {
+        this.scanParameters = this.parseArgs(obj);
+        this._output = "";
     }
 
-    performScan() {
-      console.log("In perfScan");
-        if(this.scanParameters.tcp) {
-            if(this.scanParameters.ipv4) this.scanPortRange(this.scanParameters.ports, this.scanParameters.hosts, 'tcp', 4);
-            if(this.scanParameters.ipv6) this.scanPortRange(this.scanParameters.ports, this.scanParameters.hosts, 'tcp', 6);
-        }
-        if(this.scanParameters.udp) {
-            if(this.scanParameters.ipv4) this.scanPortRange(this.scanParameters.ports, this.scanParameters.hosts, 'udp', 4);
-            if(this.scanParameters.ipv6) this.scanPortRange(this.scanParameters.ports, this.scanParameters.hosts, 'udp', 6);
-        }
+    performScan(callback) {
+      let promise = new Promise((resolve,reject) => {
+      console.log("perfScan");
+      if(this._output !== "") return;
+      // console.log(this.scanParameters);
+      // console.log(this._output);
+      if(this.scanParameters.tcp) {
+          if(this.scanParameters.ipv4) this.scanPortRange(this.scanParameters.ports, this.scanParameters.hosts, 'tcp', 4, (arg) => resolve(arg));
+          if(this.scanParameters.ipv6) this.scanPortRange(this.scanParameters.ports, this.scanParameters.hosts, 'tcp', 6, (arg) => resolve(arg));
+      }
+      if(this.scanParameters.udp) {
+          if(this.scanParameters.ipv4) this.scanPortRange(this.scanParameters.ports, this.scanParameters.hosts, 'udp', 4, (arg) => resolve(arg));
+          if(this.scanParameters.ipv6) this.scanPortRange(this.scanParameters.ports, this.scanParameters.hosts, 'udp', 6, (arg) => resolve(arg));
+      }
+    })
+    .then((result) =>{ if(callback) callback('done')})
+     
     }
 
+    getOutput() {
+      return this._output;
+    }
     // const
     scanPortUDP(port, host, family, success, callback) {
         let socket;
@@ -61,8 +72,8 @@ class Parser {
         );
 
         socket.on('error', (err) => {
-            console.log("called error");
-            console.log(err);
+            this._output += "called error\n";
+            this._output += JSON.stringify(err);
             success.closed.push({port: port, host: host, method: 'UDP', family: 'ipv' + family});
             // socket.unref();
             // socket.close();
@@ -70,20 +81,20 @@ class Parser {
         });
 
         socket.on('message', (msg, info) => {
-            console.log(`socket got: ${msg} from ${info.address}:${info.port}`);
+            // console.log(`socket got: ${msg} from ${info.address}:${info.port}`);
             success.open.push({port: port, host: host, method: 'UDP', family: 'ipv' + family});
             if (callback) callback('open');
         });
 
         socket.on('listening', () => {//empty arg list
-            console.log(`server listening ${socket.address().address}:${socket.address().port}`);
+            // console.log(`server listening ${socket.address().address}:${socket.address().port}`);
         });
     };
 
     // const
     scanPort(port, host, family, success, callback) {
         let socket = net.createConnection({port: port, host: host, family: family});
-
+        // console.log("In tcp");
         socket.on('error', err => {
             success.closed.push({
                 port: socket.remotePort,
@@ -110,26 +121,26 @@ class Parser {
         });
 
         socket.on('data', (data) => {
-            console.log(data.toString());
+            // console.log(data.toString());
             // socket.end();
         });
     };
 
     // const
-    scanPortRange(ports, hosts, method, family) {
+    scanPortRange(ports, hosts, method, family, callback) {
         let success = {
             open: [],
             closed: []
         };
         console.log('In scanPortRange');
         Promise.all(hosts.map(host => {
-            console.log("host");
+            // console.log("host");
             return ports.map(port => {
-              console.log("port",method);
+              // console.log("port",method);
                 if (method === 'tcp') return new Promise((resolve, reject) => this.scanPort(port, host, family, success, (arg) => resolve(arg)));
                 else if (method === 'udp') return new Promise((resolve, reject) => this.scanPortUDP(port, host, family, success, (arg) => resolve(arg)));
                 else {
-                  console.log("error");
+                  this._output +="error";
                   return Promise.reject('Unknown method used');
                 }
             });
@@ -138,37 +149,40 @@ class Parser {
                 // console.log(res);
                 return this.showOpenGates(success, method);
             }, (err) => {
-                web.el('#output').innerText = (err);
-                // process.exit(1);
+              this._output += err;
+              return;
+              // process.exit(1);
             });
+            if(callback) callback('done');
     };
 
     // const
     showOpenGates(success, method) {
-        let output = web.el('#output');
-        output.innerText = 'Scanning complete';
+        console.log("in show Gates!!!!!!! ");
+        this._output += 'Scanning complete\n';
         if (method === 'tcp') {
             if (success.open.length <= success.closed.length) {//less open ports than closed
-              output.innerText += '\nOpen ports are:\n';
+              this._output += 'Open ports are:\n';
                 success.open.map(port => {
-                  output.innerText += (port);
+                  this._output += JSON.stringify(port) +'\n';
                 });
             } else {//less closed ports
-              output.innerText +='\nToo many open ports. Closed ports are:\n';
+              this._output +='Too many open ports. Closed ports are:\n';
                 success.closed.map(port => {
-                  output.innerText += port;
+                  this._output += JSON.stringify(port) +'\n';
                 })
             }
         } else if (method === 'udp') {
-            console.log('All ports that are not in use are presumed open. Ports in use are: ');
+            this._output += 'All ports that are not in use are presumed open. Ports in use are:\n/';
             success.open.map(port => {
-                console.log(port);
+              this._output += JSON.stringify(port) +'\n';
             })
         }
     };
 
     // const
     parsePorts(ports) {
+      console.log('in Ports');
         if (ports.indexOf('-') !== -1) {
             return ports.split(',').map(port => {
                 if (port.indexOf('-') !== -1) {
@@ -209,13 +223,13 @@ class Parser {
             } else return hosts.split(',');
         } else if (isURL) {
             //DOES NOT WORK, finishes before dns resolves
-            console.log('is URL');
+            console.log('is URL');        // TODO make an this._output
             let resolvedHosts = [];
             hosts.split(',').map(host => {
                 dns.lookup(host, (error, address) => {
                     if (error) throw new Error('failed DNS lookup');//TODO//replace with custom error
                     else {
-                        console.log("address:\n", address);
+                        // console.log("address:\n", address);
                         resolvedHosts.push(address);
                     }
                 });
@@ -283,121 +297,61 @@ class Parser {
     };
 
     // const
-    showHelp() {
-        console.log(`Port scanner help:
-        Use this tool to check for open ports on one or more TCP/UDP host
-        Use:
-        main.js [ports] [hosts] [tcp] [udp] [ipv4] [ipv6]
-        ports: specifies the ports to scan. Use "," for single ports and "-" for port ranges, def = 1-65535
-        hosts: optional parameter, def = 127.0.0.1
-        tcp: use to perform a tcp scan, def = true
-        udp: use to perform a udp scan, def = false
-        ipv4: use to perform ipv4 scan when using URL as a host, def = true
-        ipv6: use to perform ipv6 scan when using URL as a host, def = false
-        ex:
-            $:main.js 80,400-500,8080 127.0.0.1-20 udp
-        will perform scan for selected ports on each selected host using udp ipv4 protocol
-        `);
-    };
+    // showHelp() {
+    //     console.log(`Port scanner help:
+    //     Use this tool to check for open ports on one or more TCP/UDP host
+    //     Use:
+    //     main.js [ports] [hosts] [tcp] [udp] [ipv4] [ipv6]
+    //     ports: specifies the ports to scan. Use "," for single ports and "-" for port ranges, def = 1-65535
+    //     hosts: optional parameter, def = 127.0.0.1
+    //     tcp: use to perform a tcp scan, def = true
+    //     udp: use to perform a udp scan, def = false
+    //     ipv4: use to perform ipv4 scan when using URL as a host, def = true
+    //     ipv6: use to perform ipv6 scan when using URL as a host, def = false
+    //     ex:
+    //         $:main.js 80,400-500,8080 127.0.0.1-20 udp
+    //     will perform scan for selected ports on each selected host using udp ipv4 protocol
+    //     `);
+    // };
 
     // const
-    parseArgsOld() {
-        let ports = [];
-        let hosts = [];
-        let wantTcp = false;
-        let wantUdp = false;
-        //bad args or help request
-        if ((process.argv[2] && isNaN(parseInt(process.argv[2])) && (process.argv[2] !== 'tcp' && process.argv[2] !== 'udp'))
-            || process.argv[2] === "help") {
-            showHelp();
-            return process.exit(0);
-        }//insufficient or wrong args or help call
-        process.argv = process.argv.map(arg => replaceColons(arg));
+    parseArgs(obj) {
+      // console.log("obj is ",obj);
+        let ports = obj.ports,
+            hosts = obj.hosts,
+            wantTcp = obj.wantTcp,
+            wantUdp = obj.wantUdp,
+            wantIPV4 = obj.wantIPV4,
+            wantIPV6 = obj.wantIPV6;
 
-        //1st arg being dealt with
-        if (process.argv.length === 2 || process.argv[2].indexOf('.') !== -1
-            || process.argv[2] === 'tcp' || process.argv[2] === 'udp') {//no 1st arg or it is unrelated to ports
-            // console.log('first arg not ports');
-            let fullPortRange = '0-65535';
-            ports = parsePorts(fullPortRange);
-            if (process.argv.length === 2) {
-                let localhost = '127.0.0.1';
-                hosts = parseHosts(localhost);
-                wantTcp = true;
-            } else if (process.argv[2].indexOf('.') !== -1) hosts = parseHosts(process.argv[2]);//1st arg is hosts
-            else if (process.argv[2] === 'tcp') wantTcp = true;//1st arg is tcp request
-            else if (process.argv[2] === 'udp') wantUdp = true;//1st arg is udp request
-        } else {//first arg is not hosts or type specifier -> ports then
-            ports = parsePorts(process.argv[2]);
+        const fullPortRange = '1-65535',
+              localhost = '127.0.0.1';
 
-            //2nd arg being dealt with
-            if (process.argv.length === 3 || process.argv[3] === 'tcp' || process.argv[3] === 'udp') {//no 2nd arg or i is unrelated to hosts
-                console.log("HEY: " + process.argv.length);
-                if (hosts.length === 0) {//1st one was ports
-                    let localhost = '127.0.0.1';
-                    hosts = parseHosts(localhost);
-                }
-                if (process.argv[3] === 'tcp') wantTcp = true;//2nd arg is tcp request
-                else if (process.argv[3] === 'udp') wantUdp = true;//2nd arg is udp request
-            } else {
-                hosts = parseHosts(process.argv[3]);
-
-                //3rd arg being dealt with
-                if (process.argv.length <= 4 && wantUdp === false) wantTcp = true;//no 3rd arg and udp not  wanted
-                else {
-                    if (process.argv[4] === 'tcp') wantTcp = true;//3rd arg is tcp request
-                    else if (process.argv[4] === 'udp') wantUdp = true;//3rd arg is udp request
-
-                    //4th arg being dealt with
-                    if (process.argv[5] === 'tcp') wantTcp = true;//4th arg is tcp request
-                    else if (process.argv[5] === 'udp') wantUdp = true;//3rd arg is udp request
-                }
-            }
-        }
-        return {
-            ports: ports,
-            hosts: hosts,
-            tcp: wantTcp,
-            udp: wantUdp
-        };
-    };
-
-    // const
-    parseArgs() {
-        let ports = (web.el('#ports').value.trim()).split(',');
-        let hosts = (web.el('#hosts').value.trim()).split(',');
-       
-        let wantTcp = web.el('#TCP').checked;
-        let wantUdp = web.el('#UDP').checked;
-        let wantIPV4 = web.el('#IPv4').checked;
-        let wantIPV6 = web.el('#IPv6').checked;
-        let output = web.el('#output');
-        // process.argv = process.argv.map(arg => replaceColons(arg));
-        // let args = process.argv;
-        let fullPortRange = '1-65535';
-        let localhost = '127.0.0.1';
         try {
           if(!wantIPV4 && !wantIPV6) wantIPV4 = true;
           if(!wantTcp && !wantUdp) wantTcp = true;
-        console.log(typeof(ports),[]);
-        console.log(hosts,ports)
-          if(ports === '')  ports = this.parsePorts(fullPortRange);
+          // console.log(typeof(ports),[]);
+          console.log(hosts,ports);
+          if(ports[0] === '')  ports = this.parsePorts(fullPortRange);
           else ports = this.ParsePorts(ports);
-          if(hosts === '')  hosts = this.parsePorts(localhost);
-          else hosts = this.ParsePorts(hosts);
+          if(hosts[0] === '')  hosts = this.parseHosts(localhost);
+          else hosts = this.ParseHosts(hosts);
         } catch (e) {
             if (e instanceof err.BadHostNotationError) {
-                output.innerText = e.name + '\n' + e.message + ": " + e.host + '\n' + e.stack;
+                this._output += e.name + '\n' + e.message + ": " + e.host + '\n' + e.stack;
                 // process.exit(1);
+                return;
             } else if (e instanceof err.RangeError) {
-              output.innerText = e.name + '\n' + e.message + ": " + e.range + '\n' + e.stack;
+              this._output = e.name + '\n' + e.message + ": " + e.range + '\n' + e.stack;
                 // process.exit(1);
+                return;
             } else {
-              output.innerText = 'Unknown error:' + e.name + '\n' + e.message + '\n' + e.stack;
+              this._output = 'Unknown error:' + e.name + '\n' + e.message + '\n' + e.stack;
+              return;
                 // process.exit(1);
             }
         }
-
+        // console.log(ports,hosts);
         return {
             ports: ports,
             hosts: hosts,
@@ -411,11 +365,3 @@ class Parser {
 }
 
 module.exports = Parser;
-
-// web.el('#scanBTN').addEventListener('click', () =>
-// /*Main()*/{
-//     // const scanParameters = parseArgs();
-//     // console.log(scanParameters);
-//     let parser = new Parser();
-//     parser.performScan();
-// })
