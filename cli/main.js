@@ -128,7 +128,6 @@ const parsePorts = ports => {
 };
 
 const parseHosts = hosts => {
-    console.log('inParseHosts: ', hosts);
     let isIPV6 = false;
     let isURL = false;
     hosts.split(',').map((host) => {

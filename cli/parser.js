@@ -29,35 +29,31 @@ class Parser {
         if (family === 4) socket = dgram.createSocket('udp4');
         else if (family === 6) socket = dgram.createSocket('udp6');
 
-        // socket.bind(parseInt(port), host);
-        // socket.bind(60001, '192.168.1.212');
         socket.send('my packet', 0, 9, parseInt(port), host
             , (err, bytes) => {
                 // console.log("ERROR: " + err, bytes);
-                // success.push({port: port, host: host, method:'UDP', family: 'ipv' + family});
+                // success.closed.push({port: port, host: host, method:'UDP', family: 'ipv' + family});
                 setTimeout(() => {
                     socket.unref();
                     socket.close();
-                    if (callback) callback('closed');
+                    if(callback) callback('timeout');
                 }, 2000);
-                // socket.unref();
-                // socket.close();
             }
         );
 
         socket.on('error', (err) => {
             console.log("called error");
             console.log(err);
-            success.closed.push({port: port, host: host, method: 'UDP', family: 'ipv' + family});
+            success.closed.push({port: port, host: host, method:'UDP', family: 'ipv' + family});
             // socket.unref();
             // socket.close();
-            if (callback) callback('closed');
+            if(callback) callback('closed');
         });
 
         socket.on('message', (msg, info) => {
             console.log(`socket got: ${msg} from ${info.address}:${info.port}`);
-            success.open.push({port: port, host: host, method: 'UDP', family: 'ipv' + family});
-            if (callback) callback('open');
+            success.open.push({port: port, host: host, method:'UDP', family: 'ipv' + family});
+            if(callback) callback('open');
         });
 
         socket.on('listening', () => {//empty arg list
@@ -90,12 +86,10 @@ class Parser {
             socket.unref();
             socket.end();
             if (callback) callback('open');
-            // return {port: socket.remotePort, host: socket.remoteAddress};
         });
 
         socket.on('data', (data) => {
             console.log(data.toString());
-            // socket.end();
         });
     };
 
@@ -159,13 +153,11 @@ class Parser {
     parseHosts(hosts) {
         let isIPV6 = false;
         let isURL = false;
-        // if(hosts.indexOf('.') === -1) throw new err.BadHostNotationError('Incorrect host notation', hosts);
-        // if(host.split('.').length !== 4) throw new err.BadHostNotationError('Incorrect host notation', hosts);
         hosts.split(',').map((host) => {
-            if (host.indexOf(':') !== -1) isIPV6 = true;
-            else if (isNaN(parseInt(host.split('.').pop()))) isURL = true;
+            if(host.indexOf(':') !== -1) isIPV6 = true;
+            else if( isNaN(parseInt(host.split('.').pop())) ) isURL = true;
         });
-        if (!isURL && !isIPV6) {
+        if(!isURL && !isIPV6) {
             if (hosts.indexOf('-') !== -1) {
                 return hosts.split(',').map(host => {
                     if (host.indexOf('-') !== -1) {
@@ -180,21 +172,14 @@ class Parser {
                     return host;
                 }).reduce((first, second) => first.concat(second), []);
             } else return hosts.split(',');
-        } else if (isURL) {
-            //DOES NOT WORK, finishes before dns resolves
-            console.log('is URL');
-            let resolvedHosts = [];
-            hosts.split(',').map(host => {
-                dns.lookup(host, (error, address) => {
-                    if (error) throw new Error('failed DNS lookup');//TODO//replace with custom error
-                    else {
-                        console.log("address:\n", address);
-                        resolvedHosts.push(address);
-                    }
-                });
-            });
-            return resolvedHosts;
-        } else if (isIPV6) {//seems to be working
+        } else if(isURL) {
+            if(hosts.indexOf(',') !== -1) return hosts.split(',');
+            else {
+                const returner = [];
+                returner.push(hosts);
+                return returner;
+            }
+        } else if(isIPV6) {
             if (hosts.indexOf('-') !== -1) {
                 return hosts.split(',').map(host => {
                     if (host.indexOf('-') !== -1) {//has range
