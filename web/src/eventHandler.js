@@ -1,4 +1,6 @@
-'use strict'
+'use strict';
+
+const port = process.argv[2] || 4242;
 
 const el = (str) => {
   if (str.startsWith('#'))
@@ -40,7 +42,7 @@ el('#scanBTN').addEventListener('click', () => {
   }
   console.log(data);
   
-  postData(`http://localhost:3501/USSR`,data)
+  postData(`http://localhost:` + port + `/USSR`,data)
     
 });
 

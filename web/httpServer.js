@@ -7,7 +7,7 @@ const fs = require("fs");
 const buff = require("buffer");
 
 const parser = require("./src/webParser");
-const port = process.argv[2] || 8888;
+const port = process.argv[2] || 4242;
 
 http.createServer((req, res) => {
     const uri = url.parse(req.url).pathname;
