@@ -14,10 +14,8 @@
 
 const net = require("net");
 const dgram = require("dgram");
-const dns = require('dns');
 
-// const web = require('./HtmlHelper');
-const err = require('./errors.js');
+const err = require('../../cli/errors');
 
 // console.log(process.argv);
 
