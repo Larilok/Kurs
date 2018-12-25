@@ -31,15 +31,15 @@ http.createServer((req, res) => {
         req.on('data', chunk => {       
           buffer = JSON.parse(chunk);
           const scanner = new Scanner(Parser, buffer);
-          let printer;
-          new Promise((resolve) => printer = new Printer(scanner.performScan((arg) => resolve(arg))))
+          let output = '';
+          new Promise((resolve) => output += scanner.performScan((arg) => resolve(arg)))
           .then((result) => {
             res.writeHead(200, {'Context-Type': 'text/plain'});
-            console.log("\nout: ",scanner);
+            console.log("\nout: ",output);
 
             // console.log("crap", JSON.stringify(scanner.getOutput()));
 
-            res.write((scanner.getOutput()));
+            res.write(output);
             res.end()
           })
         })

@@ -10,7 +10,7 @@ class Scanner {
       this.parser = new Parser(args);
     }
 
-    performScan() {
+    performScan(callback) {
         let success = [];
         new Promise((resolve) => {
             if(this.parser.scanParameters.tcp) {
@@ -44,6 +44,8 @@ class Scanner {
           }, {open: [], closed: []});
 
             const printer = new Printer(success);
+            console.log(printer.showOpenGatesWeb());
+            if(callback) callback('done');
             return printer.showOpenGatesMixed();
         });
 
