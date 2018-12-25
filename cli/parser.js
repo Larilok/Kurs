@@ -1,13 +1,3 @@
-//DONE//TODO ipv6 support
-//TODO udp support - somewhat done - still very unreliable
-//TODO rewrite in OOP
-//DONE//TODO add error classes
-//TODO deal with promise.reject on wrong method in scanPortRange - should it throw an error?
-//TODO fix udp breakdown on large port range
-//DONE//TODO fix refuse to exit on large port range
-//DONE//TODO rewrite parseArgs
-//DONE//TODO rewrite error throws in parsePorts and parseHosts
-
 'use strict';
 
 const net = require('net');
@@ -34,7 +24,6 @@ class Parser {
         }
     }
 
-    // const
     scanPortUDP(port, host, family, success, callback) {
         let socket;
         if (family === 4) socket = dgram.createSocket('udp4');
@@ -76,7 +65,6 @@ class Parser {
         });
     };
 
-    // const
     scanPort(port, host, family, success, callback) {
         let socket = net.createConnection({port: port, host: host, family: family});
 
@@ -111,7 +99,6 @@ class Parser {
         });
     };
 
-    // const
     scanPortRange(ports, hosts, method, family) {
         let success = {
             open: [],
@@ -133,7 +120,6 @@ class Parser {
             });
     };
 
-    // const
     showOpenGates(success, method) {
         console.log('Scanning complete');
         if (method === 'tcp') {
@@ -156,13 +142,12 @@ class Parser {
         }
     };
 
-    // const
     parsePorts(ports) {
         if (ports.indexOf('-') !== -1) {
             return ports.split(',').map(port => {
                 if (port.indexOf('-') !== -1) {
                     let range = port.split('-');
-                    this.checkPortRangeValidity(range);
+                    Parser.checkPortRangeValidity(range);
                     let length = range[1] - range[0] + 1;
                     return [...Array(length).keys()].map(x => (x + parseInt(range[0])).toString());
                 }
@@ -171,7 +156,6 @@ class Parser {
         } else return ports.split(',');
     };
 
-    // const
     parseHosts(hosts) {
         let isIPV6 = false;
         let isURL = false;
@@ -187,7 +171,7 @@ class Parser {
                     if (host.indexOf('-') !== -1) {
                         let range = host.split('-');
                         range[1] = range[0].slice(0, range[0].lastIndexOf('.') + 1) + range[1];
-                        this.checkIPV4HostRangeValidity(range);
+                        Parser.checkIPV4HostRangeValidity(range);
                         let length = range[1].slice(range[1].lastIndexOf('.') + 1) - range[0].slice(range[0].lastIndexOf('.') + 1) + 1;
                         return [...Array(length).keys()].map(x => range[0]
                                 .slice(0, range[0].lastIndexOf('.') + 1) +
@@ -216,7 +200,7 @@ class Parser {
                     if (host.indexOf('-') !== -1) {//has range
                         let range = host.split('-');
                         range[1] = range[0].slice(0, range[0].lastIndexOf(':') + 1) + range[1];
-                        this.checkIPV6HostRangeValidity(range);
+                        Parser.checkIPV6HostRangeValidity(range);
                         let snd = parseInt(range[1].slice(range[1].lastIndexOf(':') + 1), 16);
                         let fst = parseInt(range[0].slice(range[0].lastIndexOf(':') + 1), 16);
                         // console.log(fst, snd);
@@ -232,15 +216,7 @@ class Parser {
         } else throw new err.BadHostNotationError('Incorrect host notation', hosts);
     };
 
-    // const
-    replaceColons(hosts) {
-        if (hosts.indexOf(':') !== -1) {
-            return hosts.split(':').join('.');
-        } else return hosts;
-    };
-
-    // const
-    checkPortRangeValidity(range) {
+    static checkPortRangeValidity(range) {
         if (range[0] === "" || range[1] === "") throw new err.RangeError('Unbounded port range', range);
         if (parseInt(range[0]) > parseInt(range[1])) {
             let tempZero = range[0];
@@ -249,8 +225,7 @@ class Parser {
         }
     };
 
-    // const
-    checkIPV6HostRangeValidity(range) {
+    static checkIPV6HostRangeValidity(range) {
         if ((range[0].lastIndexOf(':') === range[0].length - 1 && range[0] !== '::')//':' is the last elem, but address is not '::'
             || (range[1].lastIndexOf(':') === range[1].length - 1) && range[1] !== '::') throw new err.RangeError('Unbounded host range', range);
         if (parseInt(range[0].slice(range[0].lastIndexOf(':') + 1), 16) > parseInt(range[1].slice(range[1].lastIndexOf(':') + 1), 16)) {
@@ -260,8 +235,7 @@ class Parser {
         }
     };
 
-    // const
-    checkIPV4HostRangeValidity(range) {
+    static checkIPV4HostRangeValidity(range) {
         if (range[0].lastIndexOf('.') === range[0].length - 1
             || range[1].lastIndexOf('.') === range[1].length - 1) throw new err.RangeError('Unbounded host range', range);
         if (parseInt(range[0].slice(range[0].lastIndexOf('.') + 1)) > parseInt(range[1].slice(range[1].lastIndexOf('.') + 1))) {
@@ -271,8 +245,7 @@ class Parser {
         }
     };
 
-    // const
-    showHelp() {
+    static showHelp() {
         console.log(`Port scanner help:
         Use this tool to check for open ports on one or more TCP/UDP host
         Use:
@@ -289,69 +262,6 @@ class Parser {
         `);
     };
 
-    // const
-    parseArgsOld() {
-        let ports = [];
-        let hosts = [];
-        let wantTcp = false;
-        let wantUdp = false;
-        //bad args or help request
-        if ((process.argv[2] && isNaN(parseInt(process.argv[2])) && (process.argv[2] !== 'tcp' && process.argv[2] !== 'udp'))
-            || process.argv[2] === "help") {
-            showHelp();
-            return process.exit(0);
-        }//insufficient or wrong args or help call
-        process.argv = process.argv.map(arg => replaceColons(arg));
-
-        //1st arg being dealt with
-        if (process.argv.length === 2 || process.argv[2].indexOf('.') !== -1
-            || process.argv[2] === 'tcp' || process.argv[2] === 'udp') {//no 1st arg or it is unrelated to ports
-            // console.log('first arg not ports');
-            let fullPortRange = '0-65535';
-            ports = parsePorts(fullPortRange);
-            if (process.argv.length === 2) {
-                let localhost = '127.0.0.1';
-                hosts = parseHosts(localhost);
-                wantTcp = true;
-            } else if (process.argv[2].indexOf('.') !== -1) hosts = parseHosts(process.argv[2]);//1st arg is hosts
-            else if (process.argv[2] === 'tcp') wantTcp = true;//1st arg is tcp request
-            else if (process.argv[2] === 'udp') wantUdp = true;//1st arg is udp request
-        } else {//first arg is not hosts or type specifier -> ports then
-            ports = parsePorts(process.argv[2]);
-
-            //2nd arg being dealt with
-            if (process.argv.length === 3 || process.argv[3] === 'tcp' || process.argv[3] === 'udp') {//no 2nd arg or i is unrelated to hosts
-                console.log("HEY: " + process.argv.length);
-                if (hosts.length === 0) {//1st one was ports
-                    let localhost = '127.0.0.1';
-                    hosts = parseHosts(localhost);
-                }
-                if (process.argv[3] === 'tcp') wantTcp = true;//2nd arg is tcp request
-                else if (process.argv[3] === 'udp') wantUdp = true;//2nd arg is udp request
-            } else {
-                hosts = parseHosts(process.argv[3]);
-
-                //3rd arg being dealt with
-                if (process.argv.length <= 4 && wantUdp === false) wantTcp = true;//no 3rd arg and udp not  wanted
-                else {
-                    if (process.argv[4] === 'tcp') wantTcp = true;//3rd arg is tcp request
-                    else if (process.argv[4] === 'udp') wantUdp = true;//3rd arg is udp request
-
-                    //4th arg being dealt with
-                    if (process.argv[5] === 'tcp') wantTcp = true;//4th arg is tcp request
-                    else if (process.argv[5] === 'udp') wantUdp = true;//3rd arg is udp request
-                }
-            }
-        }
-        return {
-            ports: ports,
-            hosts: hosts,
-            tcp: wantTcp,
-            udp: wantUdp
-        };
-    };
-
-    // const
     parseArgs() {
         let ports = [];
         let hosts = [];
@@ -360,7 +270,6 @@ class Parser {
         let wantIPV4 = false;
         let wantIPV6 = false;
 
-        // process.argv = process.argv.map(arg => replaceColons(arg));
         let args = process.argv;
         let fullPortRange = '1-65535';
         let localhost = '127.0.0.1';
@@ -400,7 +309,7 @@ class Parser {
                         wantTcp = true;
                         wantIPV6 = true;
                     } else {
-                        showHelp();
+                        Parser.showHelp();
                         return process.exit(0);
                     }
                     break;
@@ -430,13 +339,13 @@ class Parser {
                         wantTcp = true;
                         wantIPV6 = true;
                     } else {
-                        showHelp();
+                        Parser.showHelp();
                         return process.exit(0);
                     }
                     //arg 2
                     if (args[3].indexOf('.') !== -1 || args[3].indexOf(':') !== -1) {//arg 2 is hosts
                         if (hosts.length !== 0) {//hosts already present
-                            showHelp();
+                            Parser.showHelp();
                             process.exit(0);
                         }
                         hosts = this.parseHosts(args[3]);
@@ -458,7 +367,7 @@ class Parser {
                         wantTcp = true;
                         wantIPV6 = true;
                     } else {
-                        showHelp();
+                        Parser.showHelp();
                         return process.exit(0);
                     }
                     break;
@@ -478,13 +387,13 @@ class Parser {
                         hosts = this.parseHosts(localhost);
                         wantUdp = true;
                     } else {
-                        showHelp();
+                        Parser.showHelp();
                         return process.exit(0);
                     }
                     //arg 2
                     if (args[3].indexOf('.') !== -1 || args[3].indexOf(':') !== -1) {//arg 2 is hosts
                         if (hosts.length !== 0) {//hosts already present
-                            showHelp();
+                            Parser.showHelp();
                             process.exit(0);
                         }
                         hosts = this.parseHosts(args[3]);
@@ -505,7 +414,7 @@ class Parser {
                         else if (ports.length === 0) ports = this.parsePorts(fullPortRange);
                         wantIPV6 = true;
                     } else {
-                        showHelp();
+                        Parser.showHelp();
                         return process.exit(0);
                     }
                     //arg 3
@@ -522,7 +431,7 @@ class Parser {
                         if (!wantUdp) wantTcp = true;//if wantUdp flag was not set, have to activate default parameter
                         wantIPV6 = true;
                     } else {
-                        showHelp();
+                        Parser.showHelp();
                         return process.exit(0);
                     }
                     break;
@@ -542,13 +451,13 @@ class Parser {
                         hosts = this.parseHosts(localhost);
                         wantUdp = true;
                     } else {
-                        showHelp();
+                        Parser.showHelp();
                         return process.exit(0);
                     }
                     //arg 2
                     if (args[3].indexOf('.') !== -1 || args[3].indexOf(':') !== -1) {//arg 2 is hosts
                         if (hosts.length !== 0) {//hosts already present
-                            showHelp();
+                            Parser.showHelp();
                             process.exit(0);
                         }
                         hosts = this.parseHosts(args[3]);
@@ -561,7 +470,7 @@ class Parser {
                         else if (ports.length === 0) ports = this.parsePorts(fullPortRange);
                         wantUdp = true;
                     } else {
-                        showHelp();
+                        Parser.showHelp();
                         return process.exit(0);
                     }
                     //arg 3
@@ -576,7 +485,7 @@ class Parser {
                         if (!wantUdp) wantTcp = true;//if wantUdp flag was not set, have to activate default parameter
                         wantIPV6 = true;
                     } else {
-                        showHelp();
+                        Parser.showHelp();
                         return process.exit(0);
                     }
                     //arg 4
@@ -593,7 +502,7 @@ class Parser {
                         if (!wantUdp) wantTcp = true;//if wantUdp flag was not set, have to activate default parameter
                         wantIPV6 = true;
                     } else {
-                        showHelp();
+                        Parser.showHelp();
                         return process.exit(0);
                     }
                     break;
@@ -605,13 +514,13 @@ class Parser {
                     } else if (parseInt(args[2])) {//arg 1 is ports
                         ports = this.parsePorts(args[2]);
                     } else {
-                        showHelp();
+                        Parser.showHelp();
                         return process.exit(0);
                     }
                     //arg 2
                     if (args[3].indexOf('.') !== -1 || args[3].indexOf(':') !== -1) {//arg 2 is hosts
                         if (hosts.length !== 0) {//hosts already present
-                            showHelp();
+                            Parser.showHelp();
                             process.exit(0);
                         }
                         hosts = this.parseHosts(args[3]);
@@ -624,7 +533,7 @@ class Parser {
                         else if (ports.length === 0) ports = this.parsePorts(fullPortRange);
                         wantUdp = true;
                     } else {
-                        showHelp();
+                        Parser.showHelp();
                         return process.exit(0);
                     }
                     //arg 3
@@ -633,7 +542,7 @@ class Parser {
                     } else if (args[4] === 'udp') {
                         wantUdp = true;
                     } else {
-                        showHelp();
+                        Parser.showHelp();
                         return process.exit(0);
                     }
                     //arg 4
@@ -648,7 +557,7 @@ class Parser {
                         if (!wantUdp) wantTcp = true;//if wantUdp flag was not set, have to activate default parameter
                         wantIPV6 = true;
                     } else {
-                        showHelp();
+                        Parser.showHelp();
                         return process.exit(0);
                     }
                     //arg 5
@@ -657,7 +566,7 @@ class Parser {
                     } else if (args[6] === 'ipv6') {
                         wantIPV6 = true;
                     } else {
-                        showHelp();
+                        Parser.showHelp();
                         return process.exit(0);
                     }
                     break;
@@ -666,14 +575,14 @@ class Parser {
                     if (parseInt(args[2]) && args[2].indexOf('.') === -1 && args[2].indexOf(':') === -1) {//arg 1 is ports
                         ports = this.parsePorts(args[2]);
                     } else {
-                        showHelp();
+                        Parser.showHelp();
                         return process.exit(0);
                     }
                     //arg 2
                     if (args[3].indexOf('.') !== -1 || args[3].indexOf(':') !== -1) {//arg 2 is hosts
                         hosts = this.parseHosts(args[3]);
                     } else {
-                        showHelp();
+                        Parser.showHelp();
                         return process.exit(0);
                     }
                     //arg 3
@@ -682,7 +591,7 @@ class Parser {
                     } else if (args[4] === 'udp') {
                         wantUdp = true;
                     } else {
-                        showHelp();
+                        Parser.showHelp();
                         return process.exit(0);
                     }
                     //arg 4
@@ -691,7 +600,7 @@ class Parser {
                     } else if (args[5] === 'udp') {
                         wantUdp = true;
                     } else {
-                        showHelp();
+                        Parser.showHelp();
                         return process.exit(0);
                     }
                     //arg 5
@@ -700,7 +609,7 @@ class Parser {
                     } else if (args[6] === 'ipv6') {
                         wantIPV6 = true;
                     } else {
-                        showHelp();
+                        Parser.showHelp();
                         return process.exit(0);
                     }
                     //arg 6
@@ -709,13 +618,13 @@ class Parser {
                     } else if (args[7] === 'ipv6') {
                         wantIPV6 = true;
                     } else {
-                        showHelp();
+                        Parser.showHelp();
                         return process.exit(0);
                     }
                     break;
                 default://too many args
                     console.log('Too many args');
-                    showHelp();
+                    Parser.showHelp();
                     return process.exit(0);
             }
         } catch (e) {
@@ -750,8 +659,6 @@ class Parser {
 
 }
 /*Main()*/{
-    // const scanParameters = parseArgs();
-    // console.log(scanParameters);
     let parser = new Parser();
     parser.performScan();
 }
