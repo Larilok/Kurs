@@ -14,6 +14,6 @@ class RangeError extends Error {
         this.name = 'RangeError';
         this.range = badRange[0] + '-' + badRange[1];
     }
-};
+}
 
 module.exports = {BadHostNotationError, RangeError};
