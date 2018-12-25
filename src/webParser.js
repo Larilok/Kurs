@@ -52,7 +52,7 @@ class Parser {
     // const
     scanPortUDP(port, host, family, success, callback) {
         let socket;
-        console.log("In udp");
+        // console.log("In udp");
         if (family === 4) socket = dgram.createSocket('udp4');
         else if (family === 6) socket = dgram.createSocket('udp6');
         // socket.bind(parseInt(port), host);
@@ -132,11 +132,11 @@ class Parser {
             open: [],
             closed: []
         };
-        console.log('In scanPortRange');
+        // console.log('In scanPortRange');
         Promise.all(hosts.map(host => {
-            // console.log("host");
+            console.log("Begin host ", host);
             return ports.map(port => {
-              // console.log("port",method);
+              console.log("Begin port ",port);
                 if (method === 'tcp') return new Promise((resolve, reject) => this.scanPort(port, host, family, success, (arg) => resolve(arg)));
                 else if (method === 'udp') return new Promise((resolve, reject) => this.scanPortUDP(port, host, family, success, (arg) => resolve(arg)));
                 else {
@@ -163,28 +163,34 @@ class Parser {
         console.log("in show Gates!!!!!!! ");
         this._output += 'Scanning complete\n';
         if (method === 'tcp') {
-            if (success.open.length <= success.closed.length) {//less open ports than closed
-              this._output += 'Open ports are:\n';
-                success.open.map(port => {
-                  this._output += JSON.stringify(port) +'\n';
-                });
-            } else {//less closed ports
-              this._output +='Too many open ports. Closed ports are:\n';
-                success.closed.map(port => {
-                  this._output += JSON.stringify(port) +'\n';
-                })
-            }
-        } else if (method === 'udp') {
-            this._output += 'All ports that are not in use are presumed open. Ports in use are:\n/';
-            success.open.map(port => {
+          if (success.open.length <= success.closed.length || success.open.length <= 100) {//less open ports than closed
+            this._output += 'Open ports are:\n';
+            if(success.open.length === 0) this._output += 'None';
+            else success.open.map(port => {
+              console.log("Success.open port is ", port);
               this._output += JSON.stringify(port) +'\n';
+            });
+          } else {//less closed ports
+            this._output +='Too many open ports. Closed ports are:\n';
+            if(success.open.length === 0) this._output += 'None';
+            else success.closed.map(port => {
+                console.log("Success.closed port is ", port);
+                this._output += JSON.stringify(port) +'\n';
             })
+          }
+        } else if (method === 'udp') {
+              this._output += 'All ports that are not in use are presumed open. Ports in use are:\n';
+              if(success.open.length ===0 ) this._output += 'None';
+              else success.open.map(port => {
+                console.log("Success.open port is ", port);
+                this._output += JSON.stringify(port) +'\n';
+              })
         }
     };
 
     // const
     parsePorts(ports) {
-      console.log('in Ports');
+      // console.log('in Ports');
         if (ports.indexOf('-') !== -1) {
             return ports.split(',').map(port => {
                 if (port.indexOf('-') !== -1) {
@@ -224,40 +230,58 @@ class Parser {
                 }).reduce((first, second) => first.concat(second), []);
             } else return hosts.split(',');
         } else if (isURL) {
-            //DOES NOT WORK, finishes before dns resolves
-            console.log('is URL');        // TODO make an this._output
-            let resolvedHosts = [];
-            hosts.split(',').map(host => {
-                dns.lookup(host, (error, address) => {
-                    if (error) throw new Error('failed DNS lookup');//TODO//replace with custom error
-                    else {
-                        // console.log("address:\n", address);
-                        resolvedHosts.push(address);
-                    }
-                });
-            });
-            return resolvedHosts;
-        } else if (isIPV6) {//seems to be working
-            if (hosts.indexOf('-') !== -1) {
-                return hosts.split(',').map(host => {
-                    if (host.indexOf('-') !== -1) {//has range
-                        let range = host.split('-');
-                        range[1] = range[0].slice(0, range[0].lastIndexOf(':') + 1) + range[1];
-                        this.checkIPV6HostRangeValidity(range);
-                        let snd = parseInt(range[1].slice(range[1].lastIndexOf(':') + 1), 16);
-                        let fst = parseInt(range[0].slice(range[0].lastIndexOf(':') + 1), 16);
-                        // console.log(fst, snd);
-                        let length = snd - fst + 1;
-                        // console.log(range, length);
-                        return [...Array(length).keys()].map(x => range[0]
-                                .slice(0, range[0].lastIndexOf(':') + 1) +
-                            (x + parseInt(range[0].slice(range[0].lastIndexOf(':') + 1), 16)).toString(16));
-                    }
-                    return host;
-                }).reduce((first, second) => first.concat(second), []);
-            } else return hosts.split(',');
-        } else throw new err.BadHostNotationError('Incorrect host notation', hosts);
-    };
+          if(hosts.indexOf(',') !== -1) return hosts.split(',');
+          else {
+              const returner = [];
+              returner.push(hosts);
+              return returner;
+          }
+          //DOES NOT WORK, finishes before dns resolves
+          // console.log('is URL', hosts);
+          // let resolvedHosts = [];
+          // Promise.all(hosts.split(',').map(host => {
+          //     if(host) {
+          //         return new Promise((resolve, reject) => {
+          //             dns.lookup(host, (error, address) => {
+          //                 if (error) {
+          //                     console.log(error);
+          //                     resolve('error');
+          //                 }//reject('failed DNS lookup');//throw new Error('failed DNS lookup');//TODO//replace with custom error
+          //                 else {
+          //                     console.log("address:\n", address);
+          //                     resolvedHosts.push(address);
+          //                     resolve('success');
+          //                 }
+          //             });
+          //         });
+          //     }
+          // })).then((suc) => {
+          //     console.log("RESolved hosts: ", resolvedHosts);
+          //     return resolvedHosts;
+          // });
+  
+          // return resolvedHosts;
+      } else if(isIPV6) {//seems to be working
+          if (hosts.indexOf('-') !== -1) {
+              return hosts.split(',').map(host => {
+                  if (host.indexOf('-') !== -1) {//has range
+                      let range = host.split('-');
+                      range[1] = range[0].slice(0, range[0].lastIndexOf(':') + 1) + range[1];
+                      checkIPV6HostRangeValidity(range);
+                      let snd = parseInt(range[1].slice(range[1].lastIndexOf(':') + 1), 16);
+                      let fst = parseInt(range[0].slice(range[0].lastIndexOf(':') + 1), 16);
+                      // console.log(fst, snd);
+                      let length = snd - fst + 1;
+                      // console.log(range, length);
+                      return [...Array(length).keys()].map(x => range[0]
+                              .slice(0, range[0].lastIndexOf(':') + 1) +
+                          (x + parseInt(range[0].slice(range[0].lastIndexOf(':') + 1), 16)).toString(16));
+                  }
+                  return host;
+              }).reduce((first, second) => first.concat(second), []);
+          } else return hosts.split(',');
+      } else throw new err.BadHostNotationError('Incorrect host notation', hosts);
+  };
 
     // const
     replaceColons(hosts) {
