@@ -27,10 +27,10 @@ class Parser {
 
     performScan(callback) {
       let promise = new Promise((resolve,reject) => {
-      console.log("perfScan");
+      console.log("perfScan\n", this.scanParameters);
       if(this._output !== "") return;
       // console.log(this.scanParameters);
-      // console.log(this._output);
+      console.log(this._output);
       if(this.scanParameters.tcp) {
           if(this.scanParameters.ipv4) this.scanPortRange(this.scanParameters.ports, this.scanParameters.hosts, 'tcp', 4, (arg) => resolve(arg));
           if(this.scanParameters.ipv6) this.scanPortRange(this.scanParameters.ports, this.scanParameters.hosts, 'tcp', 6, (arg) => resolve(arg));
@@ -70,8 +70,8 @@ class Parser {
         );
 
         socket.on('error', (err) => {
-            this._output += "called error\n";
-            this._output += JSON.stringify(err);
+            // this._output += "called error\n";
+            // this._output += JSON.stringify(err);
             success.closed.push({port: port, host: host, method: 'UDP', family: 'ipv' + family});
             // socket.unref();
             // socket.close();
@@ -264,7 +264,7 @@ class Parser {
                   if (host.indexOf('-') !== -1) {//has range
                       let range = host.split('-');
                       range[1] = range[0].slice(0, range[0].lastIndexOf(':') + 1) + range[1];
-                      checkIPV6HostRangeValidity(range);
+                      this.checkIPV6HostRangeValidity(range);
                       let snd = parseInt(range[1].slice(range[1].lastIndexOf(':') + 1), 16);
                       let fst = parseInt(range[0].slice(range[0].lastIndexOf(':') + 1), 16);
                       // console.log(fst, snd);
@@ -339,7 +339,7 @@ class Parser {
 
     // const
     parseArgs(obj) {
-      // console.log("obj is ",obj);
+      console.log("obj is ",typeof(obj), typeof(obj.ports),typeof(obj.hosts), typeof(obj.wantTcp), obj);
         let ports = obj.ports,
             hosts = obj.hosts,
             wantTcp = obj.wantTcp,
@@ -349,32 +349,36 @@ class Parser {
 
         const fullPortRange = '1-65535',
               localhost = '127.0.0.1';
-
+      // console.log(ports, hosts);
         try {
           if(!wantIPV4 && !wantIPV6) wantIPV4 = true;
           if(!wantTcp && !wantUdp) wantTcp = true;
           // console.log(typeof(ports),[]);
-          console.log(hosts,ports);
+          // console.log(hosts,ports);
           if(ports === '')  ports = this.parsePorts(fullPortRange);
           else ports = this.parsePorts(ports);
           if(hosts === '')  hosts = this.parseHosts(localhost);
           else hosts = this.parseHosts(hosts);
         } catch (e) {
+          console.log(e);
             if (e instanceof err.BadHostNotationError) {
+              console.log('1');
                 this._output += e.name + '\n' + e.message + ": " + e.host + '\n' + e.stack;
                 // process.exit(1);
                 return;
             } else if (e instanceof err.RangeError) {
+              console.log('2');
               this._output = e.name + '\n' + e.message + ": " + e.range + '\n' + e.stack;
                 // process.exit(1);
                 return;
             } else {
+              console.log(3);
               this._output = 'Unknown error:' + e.name + '\n' + e.message + '\n' + e.stack;
               return;
                 // process.exit(1);
             }
         }
-        // console.log(ports,hosts);
+        console.log(ports,hosts);
         return {
             ports: ports,
             hosts: hosts,

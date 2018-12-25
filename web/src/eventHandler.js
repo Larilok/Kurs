@@ -29,6 +29,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
 
 el('#scanBTN').addEventListener('click', () => {
+  el('#output').innerHTML = "Scanning..."
   let data = {
     ports: el('#ports').value.trim(),
     hosts: el('#hosts').value.trim(),
@@ -52,10 +53,12 @@ function postData(url = ``, data = {}){
       },
       body:  JSON.stringify(data),
     })
-    .then(response => {return response.text();})
+    .then(response => {
+      if(!response.ok) el('#output').innerHTML = "HTTP error, status = " + response.status;
+      return response.text();})
     .then(data => {
       console.log((data));
       el('#output').innerHTML = (data)
       })
-    .catch(error => console.error(error));
+    .catch(error => el('#output').innerHTML = error.message);
 }
