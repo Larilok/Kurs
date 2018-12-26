@@ -144,7 +144,9 @@ class Scanner {
             closed: []
         };
         Promise.all(hosts.map(host => {
+          console.log("host: ", host);
             return ports.map(port => {
+              console.log("port: ", port);
                 if (method === 'tcp') return new Promise((resolve, reject) => this.scanPort(port, host, family, success, (arg) => resolve(arg)));
                 else if (method === 'udp') return new Promise((resolve, reject) => this.scanPortUDP(port, host, family, success, (arg) => resolve(arg)));
                 else return Promise.reject('Unknown method used');
