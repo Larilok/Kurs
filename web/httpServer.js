@@ -35,11 +35,18 @@ http.createServer((req, res) => {
              scanner.performScan((arg) => resolve(arg));
           })
           .then((result) => {
-            const printer = new Printer(result);
-            res.writeHead(200, {'Context-Type': 'text/plain'});
-            // console.log("\nout: ",result);
-            res.write(printer.showOpenGatesMixed());
-            res.end()
+            if(typeof(result) !== 'object') {
+              res.writeHead(404, {'Context-Type': 'text/plain'});
+              res.write(result);
+              res.end();
+            }
+            else{
+              const printer = new Printer(result);
+              res.writeHead(200, {'Context-Type': 'text/plain'});
+              // console.log("\nout: ",result);
+              res.write(printer.showOpenGatesMixed());
+              res.end()
+            }
           })
         })
         

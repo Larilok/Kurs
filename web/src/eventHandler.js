@@ -53,11 +53,14 @@ function postData(url = ``, data = {}){
       body:  JSON.stringify(data),
     })
     .then(response => {
-      if(!response.ok) el('#output').innerHTML = "HTTP error, status = " + response.status;
-      return response.text();})
+      console.log(!response.ok);
+      if(!response.ok) el('#output').innerHTML = "Error!\nCheck arguments";
+      else return response.text();})
     .then(data => {
       console.log((data));
-      el('#output').innerHTML = (data)
+      if(data) el('#output').innerHTML = (data)
       })
-    .catch(error => el('#output').innerHTML = error.message);
+    .catch(error => {
+      console.log("wuuut");
+      el('#output').innerHTML = "invalid argument"});
 }

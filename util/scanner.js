@@ -3,7 +3,6 @@
 const net = require('net');
 const dgram = require('dgram');
 const dns = require('dns');
-const Printer = require('./Printer');
 
 class Scanner {
     constructor(Parser, args) {
@@ -12,7 +11,12 @@ class Scanner {
     }
 
     performScan(callback) {
-      console.log(typeof(this.parser.scanParameters.hosts));
+      console.log(typeof(this.parser.scanParameters), this.parser.scanParameters);
+      if(typeof(this.parser.scanParameters) !== 'object') {
+        callback(this.parser.scanParameters);
+        console.log("sdgsaghfdhdfhfgdsfgdfsg");
+        return;
+      }
       let arr = [];
       
       if(this.parser.scanParameters.tcp) {
@@ -73,10 +77,8 @@ class Scanner {
         if (family === 4) socket = dgram.createSocket('udp4');
         else if (family === 6) socket = dgram.createSocket('udp6');
 
-        socket.send('my packet', 0, 9, parseInt(port), host
-            , (err, bytes) => {
-                // console.log("ERROR: " + err, bytes);
-                // success.closed.push({port: port, host: host, method:'UDP', family: 'ipv' + family});
+        socket.send('my packet', 0, 9, parseInt(port), host, (err, bytes) => {
+
                 setTimeout(() => {
                     socket.unref();
                     socket.close();
@@ -113,7 +115,6 @@ class Scanner {
           
             success.closed.push({
                 port: port,
-                // service: serv,
                 host: host,
                 method: 'TCP',
                 family: 'ipv' + family
@@ -124,10 +125,6 @@ class Scanner {
         });
 
         socket.on('connect', () => {
-          // new Promisedns.lookupService( host ,port, (err, hostname, service) => {
-          //   serv = service;
-          //   console.log(service);
-          //  }) 
             success.open.push({
                 port: port,
                 // service: serv,
@@ -153,7 +150,6 @@ class Scanner {
         Promise.all(hosts.map(host => {
           console.log("host: ", host);
             return ports.map(port => {
-              console.log("port: ", port);
                 if (method === 'tcp') return new Promise((resolve, reject) => this.scanPort(port, host, family, success, (arg) => resolve(arg)));
                 else if (method === 'udp') return new Promise((resolve, reject) => this.scanPortUDP(port, host, family, success, (arg) => resolve(arg)));
                 else return Promise.reject('Unknown method used');

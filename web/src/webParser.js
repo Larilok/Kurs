@@ -1,6 +1,7 @@
 'use strict';
 
 const err = require('../../util/errors');
+const net = require('net');
 
 class Parser {
     constructor(obj) {
@@ -10,6 +11,8 @@ class Parser {
     parsePorts(ports) {
       if (ports.indexOf('-') !== -1) {
         return ports.split(',').map(port => {
+          console.log(isNaN(parseInt(port)), parseInt(port));
+          
           if (port.indexOf('-') !== -1) {
               let range = port.split('-');
               this.checkPortRangeValidity(range);
@@ -18,27 +21,40 @@ class Parser {
           }
             return port;
           }).reduce((first, second) => first.concat(second), []);
-      } else return ports.split(',');
+      } else {
+        if(isNaN(parseInt(port)) || parseInt(port) < 1 || parseInt(port) > 65535) throw new Error('invalid port');
+          return ports.split(',');
+      }
     };
 
+    isURL(str) {
+      const pattern = new RegExp('^(https?:\\/\\/)?'+ // protocol
+      '((([a-z\\d]([a-z\\d-]*[a-z\\d])*)\\.?)+[a-z]{2,}|'+ // domain name
+      '((\\d{1,3}\\.){3}\\d{1,3}))'+ // OR ip (v4) address
+      '(\\:\\d+)?(\\/[-a-z\\d%_.~+]*)*'+ // port and path
+      '(\\?[;&a-z\\d%_.~+=-]*)?'+ // query string
+      '(\\#[-a-z\\d_]*)?$','i'); // fragment locator
+      return pattern.test(str);
+    }
+
     parseHosts(hosts) {
-        let isIPV6 = false;
-        let isURL = false;
-        console.log("Web parser", hosts);
+
+      let isIPV6 = false,
+          isURL = false;
         hosts = hosts.split(',').map(host => {
+          console.log(!net.isIP(host) , !this.isURL(host),!(net.isIP(host) && this.isURL(host)) );
+          if((!net.isIP(host) && !this.isURL(host))) throw new Error("Not a host");
           if((host.split(':')[0].slice(0,4) === 'http')) {
             return host.split(':')[1].slice(2, host.length);
           }
           else return host;
         }).toString();
         
-        console.log("Web parser", hosts);
 
         hosts.split(',').map((host) => {
             if (host.indexOf(':') !== -1) isIPV6 = true;
             else if (isNaN(parseInt(host.split('.').pop()))) isURL = true;
         });
-        console.log(isIPV6,isURL);
         if (!isURL && !isIPV6) {
             if (hosts.indexOf('-') !== -1) {
                 return hosts.split(',').map(host => {
@@ -53,7 +69,10 @@ class Parser {
                     }
                     return host;
                 }).reduce((first, second) => first.concat(second), []);
-            } else return hosts.split(',');
+            } else {
+              if(!net.isIPV6)
+              return hosts.split(',');
+            }
         } else if (isURL) {
           if(hosts.indexOf(',') !== -1) return hosts.split(',');
           else {
@@ -128,6 +147,8 @@ class Parser {
           if(!wantTcp && !wantUdp) wantTcp = true;
           // console.log(typeof(ports),[]);
           // console.log(hosts,ports);
+
+          
           if(ports === '')  ports = this.parsePorts(fullPortRange);
           else ports = this.parsePorts(ports);
           if(hosts === '')  hosts = this.parseHosts(localhost);
@@ -136,19 +157,14 @@ class Parser {
           console.log(e);
             if (e instanceof err.BadHostNotationError) {
               console.log('1');
-                this._output += e.name + '\n' + e.message + ": " + e.host + '\n' + e.stack;
-
-                return;
+                return  e.name + '\n' + e.message + ": " + e.host + '\n' + e.stack;
             } else if (e instanceof err.RangeError) {
               console.log('2');
-              this._output = e.name + '\n' + e.message + ": " + e.range + '\n' + e.stack;
+              return e.name + '\n' + e.message + ": " + e.range + '\n' + e.stack;
 
-                return;
             } else {
               console.log('3');
-              this._output = 'Unknown error:' + e.name + '\n' + e.message + '\n' + e.stack;
-              return;
-
+              return 'Unknown error:' + e.name + '\n' + e.message + '\n' + e.stack;
             }
         }
         return {
