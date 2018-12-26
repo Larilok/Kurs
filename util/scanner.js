@@ -31,7 +31,7 @@ class Scanner {
           if(query.ipv4) return new Promise((resolve, reject) =>
             this.scanPortRange(this.parser.scanParameters.ports, this.parser.scanParameters.hosts, 'tcp', 4, (arg, scanRes) => {
               this.success.push(scanRes);
-              // console.log("Hey ho",this.success);
+              console.log("Hey ho",this.success.length);
               resolve(arg);
           }))
           if(query.ipv6) return new Promise((resolve, reject) => 
@@ -45,7 +45,7 @@ class Scanner {
           if(query.ipv4) return new Promise((resolve, reject) =>
             this.scanPortRange(this.parser.scanParameters.ports, this.parser.scanParameters.hosts, 'udp', 4, (arg, scanRes) => {
               this.success.push(scanRes);
-              // console.log("WTF", this.success);  
+              console.log("WTF", this.success.length);  
               resolve(arg);
           }))
           if(query.ipv6) return new Promise((resolve, reject) =>
@@ -151,6 +151,7 @@ class Scanner {
             });
         }).reduce((first, second) => first.concat(second), []))
             .then((res) => {
+              console.log(success.open);
                 if(callback) callback('done', success);
                 else return this.showOpenGates(success);
             }, (err) => {
