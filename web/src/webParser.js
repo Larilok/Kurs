@@ -38,6 +38,7 @@ class Parser {
             if (host.indexOf(':') !== -1) isIPV6 = true;
             else if (isNaN(parseInt(host.split('.').pop()))) isURL = true;
         });
+        console.log(isIPV6,isURL);
         if (!isURL && !isIPV6) {
             if (hosts.indexOf('-') !== -1) {
                 return hosts.split(',').map(host => {

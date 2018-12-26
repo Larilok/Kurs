@@ -2,7 +2,7 @@
 
 const net = require('net');
 const dgram = require('dgram');
-
+const dns = require('dns');
 const Printer = require('./Printer');
 
 class Scanner {
@@ -14,8 +14,8 @@ class Scanner {
     performScan(callback) {
       console.log(typeof(this.parser.scanParameters.hosts));
       let arr = [];
-      this.parser.scanParameters.hosts.map(() => {
-        if(this.parser.scanParameters.tcp) {
+      
+      if(this.parser.scanParameters.tcp) {
         if(this.parser.scanParameters.ipv4) arr.push({tcp: true, udp: false, ipv4: true, ipv6: false});
         if(this.parser.scanParameters.ipv6) arr.push({tcp: true, udp: false, ipv4: false, ipv6: true});
       }
@@ -23,7 +23,6 @@ class Scanner {
         if(this.parser.scanParameters.ipv4) arr.push({tcp: false, udp: true, ipv4: true, ipv6: false});
         if(this.parser.scanParameters.ipv6) arr.push({tcp: false, udp: true, ipv4: false, ipv6: true});
       }
-    })
       console.log(arr, arr.length);
       Promise.all(arr.map( query => {
         // console.log(query);
@@ -109,10 +108,13 @@ class Scanner {
     scanPort(port, host, family, success, callback) {
         let socket = net.createConnection({port: port, host: host, family: family});
 
+        let serv;
         socket.on('error', err => {
+          
             success.closed.push({
-                port: socket.remotePort,
-                host: socket.remoteAddress,
+                port: port,
+                // service: serv,
+                host: host,
                 method: 'TCP',
                 family: 'ipv' + family
             });
@@ -122,9 +124,14 @@ class Scanner {
         });
 
         socket.on('connect', () => {
+          // new Promisedns.lookupService( host ,port, (err, hostname, service) => {
+          //   serv = service;
+          //   console.log(service);
+          //  }) 
             success.open.push({
-                port: socket.remotePort,
-                host: socket.remoteAddress,
+                port: port,
+                // service: serv,
+                host: host,
                 method: 'TCP',
                 family: 'ipv' + family
             });
