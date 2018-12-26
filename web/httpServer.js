@@ -31,19 +31,13 @@ http.createServer((req, res) => {
         req.on('data', chunk => {       
           buffer = JSON.parse(chunk);
           const scanner = new Scanner(Parser, buffer);
-          let output = '';
           new Promise((resolve) =>{
-            console.log("Before", output);
              scanner.performScan((arg) => resolve(arg));
-             console.log("After", output);
           })
           .then((result) => {
             const printer = new Printer(result);
             res.writeHead(200, {'Context-Type': 'text/plain'});
-            console.log("\nout: ",result);
-
-            // console.log("crap", JSON.stringify(scanner.getOutput()));
-
+            // console.log("\nout: ",result);
             res.write(printer.showOpenGatesMixed());
             res.end()
           })

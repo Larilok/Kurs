@@ -24,13 +24,14 @@ class Parser {
     parseHosts(hosts) {
         let isIPV6 = false;
         let isURL = false;
-
+        console.log("Web parser", hosts);
         hosts = hosts.split(',').map((host) => {
           if((host.split(':')[0].slice(0,4) === 'http')) {
             return host.split(':')[1].slice(2, host.length);
           }
         }).toString();
-
+        
+        console.log("Web parser", hosts);
         hosts.split(',').map((host) => {
             if (host.indexOf(':') !== -1) isIPV6 = true;
             else if (isNaN(parseInt(host.split('.').pop()))) isURL = true;

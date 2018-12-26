@@ -12,60 +12,62 @@ class Scanner {
     }
 
     performScan(callback) {
-
+      console.log(this.parser.scanParameters.hosts);
       let arr = [];
       if(this.parser.scanParameters.tcp) {
-        if(this.parser.scanParameters.ipv4 && this.parser.scanParameters.ipv6){
-          arr.push({tcp: true, udp: false, ipv4: true, ipv6: false});arr.push({tcp: true, udp: false, ipv4: false, ipv6: true});
-        }
-        else{ if(this.parser.scanParameters.ipv4) arr.push({tcp: true, udp: false, ipv4: true, ipv6: false});
-          if(this.parser.scanParameters.ipv6) arr.push({tcp: true, udp: false, ipv4: false, ipv6: true});
-        }
+        if(this.parser.scanParameters.ipv4) arr.push({tcp: true, udp: false, ipv4: true, ipv6: false});
+        if(this.parser.scanParameters.ipv6) arr.push({tcp: true, udp: false, ipv4: false, ipv6: true});
       }
       if(this.parser.scanParameters.udp) {
-        if(this.parser.scanParameters.ipv4 && this.parser.scanParameters.ipv6){
-          arr.push({tcp: false, udp: true, ipv4: true, ipv6: false});arr.push({tcp: false, udp: true, ipv4: false, ipv6: true});
+        if(this.parser.scanParameters.ipv4) arr.push({tcp: false, udp: true, ipv4: true, ipv6: false});
+        if(this.parser.scanParameters.ipv6) arr.push({tcp: false, udp: true, ipv4: false, ipv6: true});
+      }
+      console.log(arr, arr.length);
+      Promise.all(arr.map( query => {
+        // console.log(query);
+        if(query.tcp) {
+          if(query.ipv4) return new Promise((resolve, reject) =>
+            this.scanPortRange(this.parser.scanParameters.ports, this.parser.scanParameters.hosts, 'tcp', 4, (arg, scanRes) => {
+              this.success.push(scanRes);
+              // console.log("Hey ho",this.success);
+              resolve(arg);
+          }))
+          if(query.ipv6) return new Promise((resolve, reject) => 
+          this.scanPortRange(this.parser.scanParameters.ports, this.parser.scanParameters.hosts, 'tcp', 6, (arg, scanRes) => {
+            this.success.push(scanRes);
+            console.log("I'am here");  
+            resolve(arg);
+          }))
         }
-        else{ if(this.parser.scanParameters.ipv4) arr.push(({tcp: false, udp: true, ipv4: true, ipv6: false}));
-          if(this.parser.scanParameters.ipv6) arr.push(({tcp: false, udp: true, ipv4: false, ipv6: true}));
+        if(query.udp) {
+          if(query.ipv4) return new Promise((resolve, reject) =>
+            this.scanPortRange(this.parser.scanParameters.ports, this.parser.scanParameters.hosts, 'udp', 4, (arg, scanRes) => {
+              this.success.push(scanRes);
+              // console.log("WTF", this.success);  
+              resolve(arg);
+          }))
+          if(query.ipv6) return new Promise((resolve, reject) =>
+            this.scanPortRange(this.parser.scanParameters.ports, this.parser.scanParameters.hosts, 'udp', 6, (arg, scanRes) => {
+              this.success.push(scanRes);
+              resolve(arg);
+          }))
         }
       }
-      
-      Promise.all(arr.map( query =>{
-            if(query.tcp) {
-                if(query.ipv4) return new Promise((resolve, reject) =>
-                 this.scanPortRange(this.parser.scanParameters.ports, this.parser.scanParameters.hosts, 'tcp', 4, (arg, scanRes) => {
-                   console.log("Hey ho",this.success);
-                    resolve(arg);
-                }))
-                if(query.ipv6) return new Promise((resolve, reject) => 
-                this.scanPortRange(this.parser.scanParameters.ports, this.parser.scanParameters.hosts, 'tcp', 6, (arg, scanRes) => {
-                  console.log("I'am here");  
-                  resolve(arg);
-                }));
-            }
-            if(query.udp) {
-              if(query.ipv4) return new Promise((resolve, reject) =>
-               this.scanPortRange(this.parser.scanParameters.ports, this.parser.scanParameters.hosts, 'udp', 4, (arg, scanRes) => {
-                console.log("WTF", this.success);  
-                  resolve(arg);
-              }));
-              if(query.ipv6) return new Promise((resolve, reject) =>
-               this.scanPortRange(this.parser.scanParameters.ports, this.parser.scanParameters.hosts, 'udp', 6, (arg, scanRes) => {
-                  this.success.push(scanRes);
-                  resolve(arg);
-              }));
-            }
-          }
-        )).then(res => {
-          console.log("HALLO");
-          this.success = this.success.reduce((acc, current) => { 
-            acc.open = acc.open.concat(current.open); 
-            acc.closed = acc.closed.concat(current.closed); 
-            return acc; 
-          }, {open: [], closed: []});
-            if(callback) callback(this.success);
+      )).then(res => {
+        console.log("HALLO");
+        this.success.forEach(element => {
+          console.log("elem is", element.open);
         });
+        this.success = this.success.reduce((acc, current) => { 
+          acc.open = acc.open.concat(current.open); 
+          acc.closed = acc.closed.concat(current.closed); 
+          return acc; 
+        }, {open: [], closed: []});
+        this.success.forEach(element => {
+          console.log("elem is", element.open());
+        });
+        if(callback) callback(this.success);
+      });
     }
     
     scanPortUDP(port, host, family, success, callback) {
