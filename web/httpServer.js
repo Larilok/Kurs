@@ -7,8 +7,8 @@ const fs = require("fs");
 // const buff = require("buffer");
 
 const Parser = require("./src/webParser");
-const Scanner = require("../util/scanner")
-
+const Scanner = require("../util/Scanner")
+const Printer = require("../util/Printer")
 const port = process.argv[2] || 4242;
 
 http.createServer((req, res) => {
@@ -32,14 +32,19 @@ http.createServer((req, res) => {
           buffer = JSON.parse(chunk);
           const scanner = new Scanner(Parser, buffer);
           let output = '';
-          new Promise((resolve) => output += scanner.performScan((arg) => resolve(arg)))
+          new Promise((resolve) =>{
+            console.log("Before", output);
+             scanner.performScan((arg) => resolve(arg));
+             console.log("After", output);
+          })
           .then((result) => {
+            const printer = new Printer(result);
             res.writeHead(200, {'Context-Type': 'text/plain'});
-            console.log("\nout: ",output);
+            console.log("\nout: ",result);
 
             // console.log("crap", JSON.stringify(scanner.getOutput()));
 
-            res.write(output);
+            res.write(printer.showOpenGatesMixed());
             res.end()
           })
         })

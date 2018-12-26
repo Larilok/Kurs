@@ -28,12 +28,12 @@ class Printer{
       if (this._value.open.length <= this._value.closed.length || this._value.open.length <= 100) {//less open ports than closed
         output += 'Open ports are:';
         this._value.open.map(port => {
-          output += port;
+          output += JSON.stringify(port).slice(1, JSON.stringify(port).length-1) +'\n';
         });
       } else {//less closed ports
          putput += 'Too many open ports. Closed ports are:';
           this._value.closed.map(port => {
-              output += port;
+            output += JSON.stringify(port).slice(1, JSON.stringify(port).length-1) +'\n';
           })
         }
       return output;
