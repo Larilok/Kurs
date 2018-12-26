@@ -12,9 +12,10 @@ class Scanner {
     }
 
     performScan(callback) {
-      console.log(this.parser.scanParameters.hosts);
+      console.log(typeof(this.parser.scanParameters.hosts));
       let arr = [];
-      if(this.parser.scanParameters.tcp) {
+      this.parser.scanParameters.hosts.map(() => {
+        if(this.parser.scanParameters.tcp) {
         if(this.parser.scanParameters.ipv4) arr.push({tcp: true, udp: false, ipv4: true, ipv6: false});
         if(this.parser.scanParameters.ipv6) arr.push({tcp: true, udp: false, ipv4: false, ipv6: true});
       }
@@ -22,6 +23,7 @@ class Scanner {
         if(this.parser.scanParameters.ipv4) arr.push({tcp: false, udp: true, ipv4: true, ipv6: false});
         if(this.parser.scanParameters.ipv6) arr.push({tcp: false, udp: true, ipv4: false, ipv6: true});
       }
+    })
       console.log(arr, arr.length);
       Promise.all(arr.map( query => {
         // console.log(query);
@@ -63,9 +65,6 @@ class Scanner {
           acc.closed = acc.closed.concat(current.closed); 
           return acc; 
         }, {open: [], closed: []});
-        this.success.forEach(element => {
-          console.log("elem is", element.open());
-        });
         if(callback) callback(this.success);
       });
     }
