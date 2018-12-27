@@ -48,7 +48,6 @@ function postData(url = ``, data = {}){
       method: 'POST',
       headers: {
         'Content-type': 'application/json'
-        // 'Content-type': 'multipart/mixed; charset=UTF-8'
       },
       body:  JSON.stringify(data),
     })

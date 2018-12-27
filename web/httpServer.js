@@ -4,7 +4,6 @@ const http = require("http");
 const url = require("url");
 const path = require("path");
 const fs = require("fs");
-// const buff = require("buffer");
 
 const Parser = require("./src/webParser");
 const Scanner = require("../util/Scanner")
@@ -14,19 +13,11 @@ const port = process.argv[2] || 4242;
 http.createServer((req, res) => {
     const uri = url.parse(req.url).pathname;
 
-    // console.log("uri", uri);
-    // console.log("search", url.parse(req.url).search);
-
     let filename = path.join(__dirname, uri);
-
-    // console.log("filename", filename);
-    // console.log(req,res);
 
     if(req.method === 'POST') {
       if(uri === '/USSR'){
         let buffer;
-
-        // console.log(req);
 
         req.on('data', chunk => {       
           buffer = JSON.parse(chunk);
